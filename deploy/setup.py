@@ -48,7 +48,7 @@ class Deployer:
 
         try:
             repo = gh.get_repo(f"{self.repo_owner}/{self.repo_name}")
-            print(f"✓ Repository exists: https://github.com/{self.repo_owner}/{self.repo_name}")
+            print("[OK] Repository exists: https://github.com/{self.repo_owner}/{self.repo_name}")
             return repo
         except Exception:
             pass
@@ -68,7 +68,7 @@ class Deployer:
         )
         if resp.status_code == 201:
             repo = gh.get_repo(f"{self.repo_owner}/{self.repo_name}")
-            print(f"✓ Repository created: https://github.com/{repo.full_name}")
+            print("[OK] Repository created: https://github.com/{repo.full_name}")
             return repo
         elif resp.status_code == 422:
             # Repo might already exist but we couldn't access it
@@ -97,7 +97,7 @@ class Deployer:
         result = run_cmd('git push -u origin main --force')
 
         if result:
-            print(f"✓ Files pushed to GitHub successfully")
+            print("[OK] Files pushed to GitHub successfully")
             return True
         else:
             print("✗ Failed to push to GitHub")
@@ -173,7 +173,7 @@ jobs:
                            "Add daily workflow config",
                            base64.b64encode(workflow_content).decode())
 
-        print("✓ GitHub Actions workflow configured")
+        print("[OK] GitHub Actions workflow configured")
 
     def guide_youtube_setup(self):
         """Print YouTube API setup instructions."""
