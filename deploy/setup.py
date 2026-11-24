@@ -213,9 +213,9 @@ Step 5: Add Secrets to GitHub
   1. Go to: https://github.com/rajubai6419/auto-youtube-pipeline/settings/secrets/actions
   2. Click "New repository secret"
   3. Add these secrets:
-     • YOUTUBE_REFRESH_TOKEN (from Step 4)
-     • GOOGLE_CLIENT_ID (from downloaded JSON)
-     • GOOGLE_CLIENT_SECRET (from downloaded JSON)
+     * YOUTUBE_REFRESH_TOKEN (from Step 4)
+* GOOGLE_CLIENT_ID (from downloaded JSON)
+* GOOGLE_CLIENT_SECRET (from downloaded JSON)
 """)
 
 
