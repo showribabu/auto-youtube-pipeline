@@ -1,0 +1,212 @@
+import os
+import subprocess
+import tempfile
+from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+from config import (
+    OUTPUT_WIDTH, OUTPUT_HEIGHT, OUTPUT_FPS, DEFAULT_DURATION,
+    FFMPEG, CACHE_DIR, ASSETS_DIR
+)
+from logger import get_logger
+logger = get_logger("engine")
+
+def get_font(size: int):
+    # Try bundled DejaVu fonts first (cross-platform), then system fonts, then default
+    candidates = [
+        os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans.ttf"),
+        os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
+        "C:/Windows/Fonts/times.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+def generate_title_card(
+    title: str,
+    category: str,
+    subtitle: str = "",
+    width: int = OUTPUT_WIDTH,
+    height: int = OUTPUT_HEIGHT,
+    *,
+    bg_color: tuple = (20, 20, 60),
+    accent_color: tuple = (255, 180, 0),
+    output_path: str | None = None,
+) -> str:
+    img = Image.new("RGB", (width, height), color=bg_color)
+    draw = ImageDraw.Draw(img)
+
+    margin = int(width * 0.08)
+    box_w = width - margin * 2
+
+    # Category badge
+    draw.rounded_rectangle(
+        [margin, int(height * 0.06),
+         margin + int(len(category) * 0.5 * 28), int(height * 0.06) + 44],
+        radius=8, fill=accent_color,
+    )
+    font_sm = get_font(20)
+    draw.text((margin + 10, int(height * 0.06) + 6), category.upper(),
+              fill=(0, 0, 0), font=font_sm)
+
+    # Title (wrapped)
+    font_title = get_font(int(width * 0.05))
+    lines = _wrap_text(draw, title, font_title, box_w)
+    title_y = int(height * 0.22)
+    line_h = int(font_title.size * 1.3)
+    for line in lines:
+        x = margin + (box_w - sum(draw.textlength(l, font=font_title) for l in [line])) / 2
+        draw.text((x, title_y), line, fill=(255, 255, 255), font=font_title)
+        title_y += line_h
+
+    # Subtitle
+    if subtitle:
+        font_sub = get_font(int(width * 0.028))
+        sub_lines = _wrap_text(draw, subtitle, font_sub, box_w)
+        sub_y = title_y + int(height * 0.06)
+        for sl in sub_lines:
+            draw.text((margin, sub_y), sl, fill=(200, 200, 220), font=font_sub)
+            sub_y += int(font_sub.size * 1.4)
+
+    # Bottom bar with date
+    date_str = datetime.now().strftime("%B %d, %Y")
+    font_date = get_font(int(width * 0.022))
+    draw.rectangle([0, height - 50, width, height], fill=accent_color)
+    dw = draw.textlength(date_str, font=font_date)
+    draw.text(((width - dw) / 2, height - 40), date_str,
+              fill=(255, 255, 255), font=font_date)
+
+    out = output_path or os.path.join(CACHE_DIR, f"title_{datetime.now().timestamp():.0f}.png")
+    img.save(out, "PNG")
+    logger.info(f"Title card saved: {out}")
+    return out
+
+
+def generate_frame_sequence(
+    script_lines: list[str],
+    category: str,
+    duration_per_line: float = 4.0,
+    output_dir: str | None = None,
+) -> list[str]:
+    out_dir = output_dir or CACHE_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    palette = _get_category_palette(category)
+    frames = []
+    font_big = get_font(int(OUTPUT_WIDTH * 0.055))
+    font_small = get_font(int(OUTPUT_WIDTH * 0.028))
+    ts = int(datetime.now().timestamp())  # Integer timestamp
+
+    for i, line in enumerate(script_lines):
+        img = Image.new("RGB", (OUTPUT_WIDTH, OUTPUT_HEIGHT), color=palette["bg"])
+        draw = ImageDraw.Draw(img)
+        cx = OUTPUT_WIDTH // 2
+        cy = OUTPUT_HEIGHT // 2
+        bw = OUTPUT_WIDTH - int(OUTPUT_WIDTH * 0.16)
+
+        wrap_lines = _wrap_text(draw, line.strip(), font_big, bw)
+        total_h = len(wrap_lines) * int(font_big.size * 1.4)
+        y_start = cy - total_h // 2
+
+        for j, wl in enumerate(wrap_lines):
+            dw = draw.textlength(wl, font=font_big)
+            draw.text((cx - dw / 2, y_start + j * int(font_big.size * 1.4)),
+                      wl, fill=palette["text"], font=font_big)
+
+        dot_count = min(i + 1, 5)
+        dot_spacing = 24
+        dx_start = cx - (dot_count - 1) * dot_spacing / 2
+        for d in range(dot_count):
+            draw.ellipse([dx_start + d * dot_spacing, OUTPUT_HEIGHT - 80,
+                          dx_start + d * dot_spacing + 10, OUTPUT_HEIGHT - 70],
+                         fill=palette["accent"])
+
+        frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i:03d}.png")
+        img.save(frame_path, "PNG")
+        frames.append(frame_path)
+
+    logger.info(f"Generated {len(frames)} frames in {out_dir}")
+    return frames
+
+
+def assemble_video(
+    frames: list[str],
+    audio_path: str,
+    output_path: str,
+    fps: int = OUTPUT_FPS,
+) -> str:
+    if not os.path.exists(audio_path):
+        raise FileNotFoundError(f"Audio not found: {audio_path}")
+
+    # Build a file-list for FFmpeg concat — escape Windows backslashes to forward slashes
+    safe_frames = [fp.replace("\\", "/") for fp in frames]
+
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
+        for fp in safe_frames:
+            f.write(f"file '{fp}'\n")
+            f.write(f"duration {1/fps}\n")
+        temp_list = f.name
+
+    video_path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
+
+    cmd = [
+        FFMPEG, "-y",
+        "-f", "concat", "-safe", "0", "-i", temp_list,
+        "-framerate", str(fps),
+        "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-an", video_path,
+    ]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    os.unlink(temp_list)
+    if proc.returncode != 0:
+        raise RuntimeError(f"FFmpeg video encode failed: {proc.stderr.decode()}")
+
+    audio_cmd = [
+        FFMPEG, "-y",
+        "-i", video_path, "-i", audio_path,
+        "-c:v", "copy", "-c:a", "aac", "-shortest",
+        output_path,
+    ]
+    proc2 = subprocess.run(audio_cmd, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE)
+    os.unlink(video_path)
+    if proc2.returncode != 0:
+        raise RuntimeError(f"FFmpeg merge failed: {proc2.stderr.decode()}")
+
+    logger.info(f"Video assembled: {output_path}")
+    return output_path
+
+
+def _wrap_text(draw: ImageDraw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    lines, current = [], ""
+    for w in words:
+        test = f"{current} {w}".strip()
+        if draw.textlength(test, font=font) <= max_width:
+            current = test
+        else:
+            lines.append(current)
+            current = w
+    if current:
+        lines.append(current)
+    return lines or [text]
+
+
+def _get_category_palette(cat: str) -> dict:
+    palettes = {
+        "kids":           {"bg": (40, 80, 180), "text": (255, 255, 240), "accent": (255, 220, 50)},
+        "news":           {"bg": (20, 25, 40),  "text": (240, 240, 240), "accent": (220, 50, 50)},
+        "weather":        {"bg": (30, 70, 120), "text": (255, 255, 255), "accent": (100, 200, 255)},
+        "facts":          {"bg": (50, 30, 80),   "text": (255, 250, 230), "accent": (180, 100, 255)},
+        "motivational":   {"bg": (30, 30, 30),   "text": (255, 240, 200), "accent": (255, 160, 50)},
+    }
+    return palettes.get(cat, palettes["facts"])

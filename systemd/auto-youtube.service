@@ -1,0 +1,21 @@
+[Unit]
+Description=Auto YouTube AI Video Generation Pipeline
+After=network-online.target network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/auto-youtube-pipeline
+ExecStart=/opt/auto-youtube-pipeline/.venv/bin/python /opt/auto-youtube-pipeline/scripts/pipeline.py --scheduler
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/opt/auto-youtube-pipeline/logs/journal.log
+StandardError=append:/opt/auto-youtube-pipeline/logs/journal.log
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

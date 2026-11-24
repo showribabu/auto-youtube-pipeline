@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+output/*
+!output/.gitkeep
+logs/*
+!logs/.gitkeep
+cache/*
+!cache/.gitkeep
+config/.env
+config/yt_token.json
+test_*.mp3
+weather_test.mp3
+*.db
+.DS_Store
+node_modules/

@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  auto-youtube:
+    build: .
+    container_name: auto-youtube-pipeline
+    restart: unless-stopped
+    environment:
+      - YOUTUBE_REFRESH_TOKEN=${YOUTUBE_REFRESH_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - OUTPUT_DIR=/app/output
+      - LOG_FILE=/app/logs/pipeline.log
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+      - ./assets:/app/assets
+    volumes:
+      - ./config/.env:/app/config/.env:ro
+    environment:
+      - SCHEDULE_KIDS=0 8 * * *
+      - SCHEDULE_NEWS=0 7 * * *
+      - SCHEDULE_WEATHER=0 6 * * *
+      - SCHEDULE_FACTS=0 12 * * *
+      - SCHEDULE_MOTIVATIONAL=0 18 * * *
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
