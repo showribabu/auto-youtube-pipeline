@@ -1,0 +1,15 @@
+{
+  "name": "auto-youtube-pipeline",
+  "version": "1.0.0",
+  "description": "Fully autonomous AI-powered video generation and YouTube upload system. Generates videos across multiple categories and publishes them on schedule — zero daily involvement required.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@octokit/rest": "^22.0.1"
+  }
+}
