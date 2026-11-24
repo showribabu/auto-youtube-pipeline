@@ -183,16 +183,16 @@ jobs:
         print("""
 Step 1: Create Google Cloud Project
   1. Go to: https://console.cloud.google.com/
-  2. Click "Select a project" → "New Project"
-  3. Name: "auto-youtube-pipeline" → Create
+  2. Click "Select a project" -> "New Project"
+  3. Name: "auto-youtube-pipeline" -> Create
 
 Step 2: Enable YouTube Data API
-  1. Left menu: APIs & Services → Library
-  2. Search "YouTube Data API v3" → Enable
+  1. Left menu: APIs & Services -> Library
+  2. Search "YouTube Data API v3" -> Enable
 
 Step 3: Create OAuth Credentials
-  1. Left menu: APIs & Services → Credentials
-  2. "+ CREATE CREDENTIALS" → "OAuth client ID"
+  1. Left menu: APIs & Services -> Credentials
+  2. "+ CREATE CREDENTIALS" -> "OAuth client ID"
   3. Application type: "Desktop app"
   4. Name: "auto-youtube-uploader"
   5. Download JSON file
