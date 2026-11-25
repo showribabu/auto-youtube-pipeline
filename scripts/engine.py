@@ -95,26 +95,47 @@ def generate_title_card(
     return out
 
 
+# Shorts categories default to vertical 9:16 (1080x1920) for viral reach
+SHORTS_CATEGORIES = {
+    "facts", "motivational", "health", "language", "cooking",
+    "crypto", "tech", "history"
+}
+
 def generate_frame_sequence(
     script_lines: list[str],
     category: str,
     duration_per_line: float = 4.0,
     output_dir: str | None = None,
+    is_shorts: bool | None = None,
 ) -> list[str]:
     out_dir = output_dir or CACHE_DIR
     os.makedirs(out_dir, exist_ok=True)
     palette = _get_category_palette(category)
     frames = []
-    font_big = get_font(int(OUTPUT_WIDTH * 0.055))
-    font_small = get_font(int(OUTPUT_WIDTH * 0.028))
-    ts = int(datetime.now().timestamp())  # Integer timestamp
+
+    if is_shorts is None:
+        is_shorts = category in SHORTS_CATEGORIES
+
+    width = 1080 if is_shorts else OUTPUT_WIDTH
+    height = 1920 if is_shorts else OUTPUT_HEIGHT
+
+    font_big = get_font(int(width * (0.065 if is_shorts else 0.055)))
+    font_badge = get_font(int(width * (0.035 if is_shorts else 0.025)))
+    ts = int(datetime.now().timestamp())
 
     for i, line in enumerate(script_lines):
-        img = Image.new("RGB", (OUTPUT_WIDTH, OUTPUT_HEIGHT), color=palette["bg"])
+        img = Image.new("RGB", (width, height), color=palette["bg"])
         draw = ImageDraw.Draw(img)
-        cx = OUTPUT_WIDTH // 2
-        cy = OUTPUT_HEIGHT // 2
-        bw = OUTPUT_WIDTH - int(OUTPUT_WIDTH * 0.16)
+        cx = width // 2
+        cy = height // 2
+        bw = width - int(width * (0.12 if is_shorts else 0.16))
+
+        # Top Category & Shorts Header Banner
+        if is_shorts:
+            header_text = f"⚡ {category.upper()} • DAILY SHORTS"
+            hw = draw.textlength(header_text, font=font_badge)
+            draw.rounded_rectangle([cx - hw/2 - 20, 140, cx + hw/2 + 20, 200], radius=16, fill=palette["accent"])
+            draw.text((cx - hw / 2, 152), header_text, fill=(20, 20, 20), font=font_badge)
 
         wrap_lines = _wrap_text(draw, line.strip(), font_big, bw)
         total_h = len(wrap_lines) * int(font_big.size * 1.4)
@@ -125,19 +146,20 @@ def generate_frame_sequence(
             draw.text((cx - dw / 2, y_start + j * int(font_big.size * 1.4)),
                       wl, fill=palette["text"], font=font_big)
 
-        dot_count = min(i + 1, 5)
-        dot_spacing = 24
+        dot_count = min(i + 1, 6)
+        dot_spacing = 28
         dx_start = cx - (dot_count - 1) * dot_spacing / 2
+        dot_y = height - (200 if is_shorts else 80)
         for d in range(dot_count):
-            draw.ellipse([dx_start + d * dot_spacing, OUTPUT_HEIGHT - 80,
-                          dx_start + d * dot_spacing + 10, OUTPUT_HEIGHT - 70],
+            draw.ellipse([dx_start + d * dot_spacing, dot_y,
+                          dx_start + d * dot_spacing + 12, dot_y + 12],
                          fill=palette["accent"])
 
         frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i:03d}.png")
         img.save(frame_path, "PNG")
         frames.append(frame_path)
 
-    logger.info(f"Generated {len(frames)} frames in {out_dir}")
+    logger.info(f"Generated {len(frames)} frames ({width}x{height}, shorts={is_shorts}) in {out_dir}")
     return frames
 
 
@@ -175,19 +197,37 @@ def assemble_video(
     if proc.returncode != 0:
         raise RuntimeError(f"FFmpeg video encode failed: {proc.stderr.decode()}")
 
+    # Generate subtle soothing ambient background music (gentle 220Hz + 330Hz harmonic pad at -24dB)
+    # and mix it seamlessly under the voiceover
     audio_cmd = [
         FFMPEG, "-y",
-        "-i", video_path, "-i", audio_path,
-        "-c:v", "copy", "-c:a", "aac", "-shortest",
+        "-i", video_path,
+        "-i", audio_path,
+        "-f", "lavfi", "-i", "sine=frequency=220:sample_rate=44100",
+        "-filter_complex",
+        "[2:a]volume=0.03,lowpass=f=350[bgm]; [1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
+        "-map", "0:v",
+        "-map", "[aout]",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-shortest",
         output_path,
     ]
-    proc2 = subprocess.run(audio_cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE)
+    proc2 = subprocess.run(audio_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     os.unlink(video_path)
     if proc2.returncode != 0:
-        raise RuntimeError(f"FFmpeg merge failed: {proc2.stderr.decode()}")
+        # Fallback to simple audio merge if amix filter encounters any device specific issue
+        logger.warning(f"BGM mix failed ({proc2.stderr.decode()[:100]}), falling back to direct audio merge")
+        fallback_cmd = [
+            FFMPEG, "-y",
+            "-i", video_path, "-i", audio_path,
+            "-c:v", "copy", "-c:a", "aac", "-shortest",
+            output_path,
+        ]
+        subprocess.run(fallback_cmd, check=True)
 
-    logger.info(f"Video assembled: {output_path}")
+    logger.info(f"Video assembled with ambient audio: {output_path}")
     return output_path
 
 

@@ -119,13 +119,26 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     # Translate content for non-English languages
     content = translate_content(content, lang)
 
-    title      = content["title"]
-    script     = content["full_script"]
+    # Import Shorts categories
+    from engine import SHORTS_CATEGORIES
+
+    is_shorts = category in SHORTS_CATEGORIES
+
+    title        = content["title"]
+    script       = content["full_script"]
     script_lines = content["script_lines"]
-    voice      = content.get("voice", "default_female")
-    rate       = content.get("rate", "+0%")
-    tags       = content["tags"]
-    description= content["description"]
+    voice        = content.get("voice", "default_female")
+    rate         = content.get("rate", "+0%")
+    tags         = list(content.get("tags", []))
+    description  = content["description"]
+
+    # Supercharge metadata for Shorts & Viral discoverability
+    if is_shorts:
+        if "#Shorts" not in title:
+            # Ensure title has space for #Shorts within 100 char limit
+            title = f"{title[:90]} #Shorts"
+        tags.extend(["shorts", "viral", "trending", "youtubeshorts", "daily", "foryou"])
+        description = f"{description}\n\n#Shorts #Viral #Trending #YouTubeShorts #DailyKnowledge"
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = _slug(title)
@@ -138,11 +151,14 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     audio_path      = os.path.join(out_dir, f"{ts_str}_{safe_title}.mp3")
     thumbnail_path  = os.path.join(out_dir, f"{ts_str}_{safe_title}_thumb.jpg")
 
-    logger.info(f"Generating video for: {title} [{category}]")
+    logger.info(f"Generating video for: {title} [{category}] (Shorts={is_shorts})")
 
-    # Step 1: Generate frames
+    # Step 1: Generate frames (1080x1920 for Shorts, 1280x720 for landscape)
     try:
-        frames = generate_frame_sequence(script_lines, category, duration_per_line=5.0, output_dir=out_dir)
+        frames = generate_frame_sequence(
+            script_lines, category, duration_per_line=4.0,
+            output_dir=out_dir, is_shorts=is_shorts
+        )
     except Exception as e:
         logger.error(f"Frame generation failed: {e}")
         return None
@@ -161,18 +177,20 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.error(f"Video assembly failed: {e}")
         return None
 
-    # Step 4: Create thumbnail
+    # Step 4: Create thumbnail (matching aspect ratio)
     try:
         from PIL import Image, ImageDraw
-        thumb = Image.new("RGB", (1280, 720), color=(30, 30, 60))
+        tw = 1080 if is_shorts else 1280
+        th = 1920 if is_shorts else 720
+        thumb = Image.new("RGB", (tw, th), color=(25, 25, 45))
         draw = ImageDraw.Draw(thumb)
-        font = get_font(48)
-        lines = [title[:60], content["category"].upper()]
-        y = 280
+        font = get_font(52 if is_shorts else 48)
+        lines = [title[:55], f"#{category.upper()}"]
+        y = (th // 2) - 80
         for line in lines:
             dw = draw.textlength(line, font=font)
-            draw.text(((1280 - dw) / 2, y), line, fill=(255, 255, 255), font=font)
-            y += 70
+            draw.text(((tw - dw) / 2, y), line, fill=(255, 255, 255), font=font)
+            y += 85
         thumb.save(thumbnail_path, "JPEG", quality=90)
     except Exception as e:
         logger.warning(f"Thumbnail creation skipped: {e}")
