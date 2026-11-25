@@ -98,8 +98,10 @@ def _fetch_background_image(category: str, width: int, height: int, slide_idx: i
                     ow, oh = img.size
                     img = img.crop((0, 0, ow, int(oh * 0.94)))
                     img = img.resize((width, height), Image.Resampling.LANCZOS)
-                    # Slightly darken image for clean text contrast
-                    img = ImageEnhance.Brightness(img).enhance(0.68)
+                    # Keep backgrounds vivid, bright, and lifelike
+                    img = ImageEnhance.Brightness(img).enhance(0.86)
+                    img = ImageEnhance.Contrast(img).enhance(1.12)
+                    img = ImageEnhance.Color(img).enhance(1.15)
                     return img
         except Exception as e:
             logger.debug(f"Background fetch failed ({url[:45]}...): {e}")
@@ -109,25 +111,49 @@ def _fetch_background_image(category: str, width: int, height: int, slide_idx: i
 
 
 def _draw_gradient_overlay(base_img: Image.Image) -> Image.Image:
-    """Apply a cinematic vertical dark gradient vignette so text stands out clearly."""
+    """Apply a clean bottom-weighted gradient vignette so vivid photography shines through."""
     width, height = base_img.size
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Top subtle vignette
-    for y in range(0, int(height * 0.25)):
-        alpha = int(140 * (1 - y / (height * 0.25)))
+    # Very light top vignette for header readability
+    for y in range(0, int(height * 0.16)):
+        alpha = int(110 * (1 - y / (height * 0.16)))
         draw.line([(0, y), (width, y)], fill=(8, 10, 18, alpha))
 
-    # Center-to-bottom rich vignette for captions
-    start_y = int(height * 0.30)
+    # Smooth bottom vignette for captions & Subscribe CTA
+    start_y = int(height * 0.45)
     for y in range(start_y, height):
         progress = (y - start_y) / (height - start_y)
-        alpha = int(170 * min(1.0, progress * 1.3))
+        alpha = int(165 * min(1.0, progress * 1.2))
         draw.line([(0, y), (width, y)], fill=(8, 10, 18, alpha))
 
     combined = Image.alpha_composite(base_img.convert("RGBA"), overlay)
     return combined
+
+
+def _draw_subscribe_cta(draw: ImageDraw.ImageDraw, cx: int, y: int, font_cta, is_shorts: bool):
+    """Draw a sleek YouTube-style Red SUBSCRIBE button + Golden Bell notification icon."""
+    # Red Subscribe Pill
+    sub_text = "SUBSCRIBE"
+    stw = draw.textlength(sub_text, font=font_cta)
+    btn_w = int(stw + 44)
+    btn_h = int(font_cta.size + 22)
+    bx0 = cx - btn_w // 2 - 28
+    by0 = y
+
+    # Red rounded button
+    draw.rounded_rectangle([bx0, by0, bx0 + btn_w, by0 + btn_h], radius=btn_h // 2, fill=(230, 20, 20, 240))
+    draw.text((bx0 + 22, by0 + 9), sub_text, fill=(255, 255, 255, 255), font=font_cta)
+
+    # Golden Bell Notification Icon next to Subscribe button
+    bell_cx = bx0 + btn_w + 34
+    bell_cy = by0 + btn_h // 2
+    # Bell dome & body
+    draw.ellipse([bell_cx - 12, bell_cy - 13, bell_cx + 12, bell_cy + 7], fill=(255, 200, 40, 255))
+    draw.polygon([(bell_cx - 14, bell_cy + 7), (bell_cx + 14, bell_cy + 7), (bell_cx + 17, bell_cy + 12), (bell_cx - 17, bell_cy + 12)], fill=(255, 200, 40, 255))
+    # Bell clapper
+    draw.ellipse([bell_cx - 4, bell_cy + 11, bell_cx + 4, bell_cy + 17], fill=(255, 220, 100, 255))
 
 
 def generate_title_card(
@@ -185,6 +211,7 @@ def generate_frame_sequence(
     full_sample_text = " ".join(script_lines)
     font_big = get_font(int(width * (0.056 if is_shorts else 0.048)), text=full_sample_text)
     font_brand = get_font(int(width * (0.030 if is_shorts else 0.022)), text="OMNIPULSE DAILY")
+    font_cta = get_font(int(width * (0.026 if is_shorts else 0.020)), text="SUBSCRIBE")
     ts = int(datetime.now().timestamp())
 
     # Fetch up to 3 distinct real background images per video and cycle smoothly
@@ -252,13 +279,9 @@ def generate_frame_sequence(
             draw.text((tx + 2, ty + 3), wl, fill=(0, 0, 0, 200), font=font_big)
             draw.text((tx, ty), wl, fill=(255, 255, 255, 255), font=font_big)
 
-        # Sleek bottom progress bar
-        bar_y = height - (150 if is_shorts else 50)
-        bar_w = int(width * 0.72)
-        bar_x0 = cx - bar_w // 2
-        progress_ratio = (i + 1) / max(1, len(script_lines))
-        draw.rounded_rectangle([bar_x0, bar_y, bar_x0 + bar_w, bar_y + 10], radius=5, fill=(255, 255, 255, 60))
-        draw.rounded_rectangle([bar_x0, bar_y, bar_x0 + int(bar_w * progress_ratio), bar_y + 10], radius=5, fill=(*palette["accent"], 255))
+        # YouTube Subscribe + Bell Notification CTA
+        cta_y = height - (210 if is_shorts else 95)
+        _draw_subscribe_cta(draw, cx, cta_y, font_cta, is_shorts)
 
         frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i:03d}.png")
         rgba_img.convert("RGB").save(frame_path, "PNG")
@@ -303,61 +326,68 @@ def assemble_video(
     with Image.open(frames[0]) as im:
         w, h = im.size
 
-    safe_frames = [fp.replace("\\", "/") for fp in frames]
-    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
-        for fp in safe_frames:
-            f.write(f"file '{fp}'\n")
-            f.write(f"duration {frame_dur:.3f}\n")
-        f.write(f"file '{safe_frames[-1]}'\n")
-        temp_list = f.name
+    if len(frames) == 1:
+        cmd = [
+            FFMPEG, "-y",
+            "-loop", "1", "-t", f"{audio_dur:.2f}", "-i", frames[0],
+            "-i", audio_path,
+            "-f", "lavfi", "-i", "sine=frequency=220:sample_rate=44100",
+            "-filter_complex",
+            "[1:a]volume=1.6[voice];[2:a]volume=0.02,lowpass=f=350[bgm];[voice][bgm]amix=inputs=2:duration=first:normalize=0[aout]",
+            "-map", "0:v", "-map", "[aout]",
+            "-pix_fmt", "yuv420p", "-r", "25",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "192k", "-t", f"{audio_dur:.2f}",
+            output_path,
+        ]
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.returncode != 0:
+            raise RuntimeError(f"FFmpeg single-slide encode failed: {proc.stderr.decode()[-400:]}")
+        logger.info(f"✓ Cinematic video assembled: {output_path} ({audio_dur:.1f}s)")
+        return output_path
 
-    video_path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
+    # Multi-slide smooth xfade crossfade transitions + LOUD normalized speech audio
+    fade = min(0.5, frame_dur * 0.25)
+    in_args = []
+    for f_path in frames:
+        in_args.extend(["-loop", "1", "-t", f"{frame_dur + fade:.3f}", "-i", f_path])
 
-    # Step 1: Encode video with subtle gentle motion zoom effect (1.0 -> 1.04 smooth pulse)
-    # Using scale + crop gentle zoompan or clean 25fps encoding
+    fc_parts = []
+    prev = "[0:v]"
+    for idx in range(1, len(frames)):
+        offset = idx * frame_dur - fade * 0.5
+        nxt = f"[v{idx}]" if idx < len(frames) - 1 else "[vout]"
+        fc_parts.append(f"{prev}[{idx}:v]xfade=transition=fade:duration={fade:.2f}:offset={offset:.2f}{nxt}")
+        prev = nxt
+
+    audio_idx = len(frames)
+    bgm_idx = len(frames) + 1
+    fc_parts.append(f"[{audio_idx}:a]volume=1.6[voice]")
+    fc_parts.append(f"[{bgm_idx}:a]volume=0.02,lowpass=f=350[bgm]")
+    fc_parts.append("[voice][bgm]amix=inputs=2:duration=first:normalize=0[aout]")
+
+    filter_complex = ";".join(fc_parts)
+
     cmd = [
         FFMPEG, "-y",
-        "-f", "concat", "-safe", "0", "-i", temp_list,
-        "-vf", f"scale={w}:{h},format=yuv420p",
-        "-r", "25",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-        "-an", video_path,
-    ]
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    os.unlink(temp_list)
-    if proc.returncode != 0:
-        raise RuntimeError(f"FFmpeg video encode failed: {proc.stderr.decode()}")
-
-    # Step 2: Merge video with speech audio and subtle harmonic background pad
-    audio_cmd = [
-        FFMPEG, "-y",
-        "-i", video_path,
+        *in_args,
         "-i", audio_path,
         "-f", "lavfi", "-i", "sine=frequency=220:sample_rate=44100",
-        "-filter_complex",
-        "[2:a]volume=0.02,lowpass=f=350[bgm]; [1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
-        "-map", "0:v",
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
         "-map", "[aout]",
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-r", "25",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "192k",
         "-t", f"{audio_dur:.2f}",
         output_path,
     ]
-    proc2 = subprocess.run(audio_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    os.unlink(video_path)
-    if proc2.returncode != 0:
-        logger.warning(f"BGM mix fallback triggered: {proc2.stderr.decode()[:100]}")
-        fallback_cmd = [
-            FFMPEG, "-y",
-            "-i", video_path, "-i", audio_path,
-            "-c:v", "copy", "-c:a", "aac",
-            "-t", f"{audio_dur:.2f}",
-            output_path,
-        ]
-        subprocess.run(fallback_cmd, check=True)
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode != 0:
+        raise RuntimeError(f"FFmpeg xfade encode failed: {proc.stderr.decode()[-400:]}")
 
-    logger.info(f"✓ Cinematic video assembled: {output_path} ({audio_dur:.1f}s)")
+    logger.info(f"✓ Cinematic video assembled with crossfades & boosted audio: {output_path} ({audio_dur:.1f}s)")
     return output_path
 
 
