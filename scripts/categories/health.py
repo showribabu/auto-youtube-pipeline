@@ -1,6 +1,7 @@
 import random
 from datetime import datetime
-from config import logger
+from logger import get_logger
+logger = get_logger("health")
 
 HEALTH_TOPICS = [
     ("Morning Routine for Energy All Day", [

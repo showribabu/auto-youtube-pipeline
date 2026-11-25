@@ -1,6 +1,7 @@
 import random
 import datetime
-from config import logger
+from logger import get_logger
+logger = get_logger("history")
 
 HISTORY_EVENTS = [
     ("Today in History — Moon Landing", [

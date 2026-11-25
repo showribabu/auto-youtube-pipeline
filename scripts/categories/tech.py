@@ -3,7 +3,9 @@ import urllib.request
 import json
 import re
 from datetime import datetime
-from config import logger
+from config import SCHEDULES, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES
+from logger import get_logger
+logger = get_logger("tech")
 
 TECH_FEEDS = [
     "https://feeds.feedburner.com/TechCrunch/",
