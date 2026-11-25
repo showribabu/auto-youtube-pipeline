@@ -16,5 +16,14 @@
     "video_id": "HUFkI8LrDug",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/devotional_te/20261125_184956_Shorts_te.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-25",
+    "category": "devotional",
+    "lang": "te",
+    "title": "\u0c06\u0c27\u0c4d\u0c2f\u0c3e\u0c24\u0c4d\u0c2e\u0c3f\u0c15 \u0c1a\u0c3f\u0c02\u0c24\u0c28 \u2014 \u0c2a\u0c4d\u0c30\u0c36\u0c3e\u0c02\u0c24\u0c2e\u0c48\u0c28 \u0c2e\u0c28\u0c38\u0c4d\u0c38\u0c41 \u0c2e\u0c30\u0c3f\u0c2f\u0c41 \u0c26\u0c48\u0c35\u0c2d\u0c15\u0c4d\u0c24\u0c3f #Shorts",
+    "video_id": "7IiQ-Jc7t8Q",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/devotional_te/20261125_185843_Shorts_te.mp4",
+    "dry_run": false
   }
 ]
