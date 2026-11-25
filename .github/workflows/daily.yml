@@ -24,14 +24,12 @@ jobs:
           pip install -r requirements.txt
       - run: sudo cp -r assets/dejavu-fonts-ttf-2.37/ttf/*.ttf /usr/share/fonts/truetype/dejavu/ && sudo fc-cache -fv
       - run: ffmpeg -version | head -1
-      - name: Run pipeline test
+      - name: Run pipeline (full upload)
         env:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           source venv/bin/activate
-          cd scripts
-          python test_pipeline.py
-      - run: find output/ -name "*.mp4" -type f
+          python scripts/pipeline.py --run-all
       - run: echo "Daily pipeline execution completed successfully"
