@@ -11,12 +11,17 @@ from logger import get_logger
 logger = get_logger("engine")
 
 def get_font(size: int):
-    # Try bundled DejaVu fonts first (cross-platform), then system fonts, then default
+    # Try Indic/Unicode fonts first for multilingual support, then standard fonts
     candidates = [
+        "C:/Windows/Fonts/Nirmala.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+        "/usr/share/fonts/truetype/lohit-telugu/Lohit-Telugu.ttf",
+        "/usr/share/fonts/truetype/lohit-devanagari/Lohit-Devanagari.ttf",
         os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans.ttf"),
         os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
-        "C:/Windows/Fonts/arial.ttf",
         "C:/Windows/Fonts/segoeui.ttf",
+        "C:/Windows/Fonts/arial.ttf",
         "C:/Windows/Fonts/times.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
@@ -208,5 +213,13 @@ def _get_category_palette(cat: str) -> dict:
         "weather":        {"bg": (30, 70, 120), "text": (255, 255, 255), "accent": (100, 200, 255)},
         "facts":          {"bg": (50, 30, 80),   "text": (255, 250, 230), "accent": (180, 100, 255)},
         "motivational":   {"bg": (30, 30, 30),   "text": (255, 240, 200), "accent": (255, 160, 50)},
+        "tech":           {"bg": (15, 20, 35),   "text": (200, 230, 255), "accent": (0, 180, 220)},
+        "crypto":         {"bg": (20, 15, 35),   "text": (230, 220, 255), "accent": (140, 80, 255)},
+        "health":         {"bg": (20, 50, 30),   "text": (220, 255, 220), "accent": (80, 220, 100)},
+        "history":        {"bg": (40, 30, 20),   "text": (255, 240, 210), "accent": (200, 150, 50)},
+        "gaming":         {"bg": (10, 20, 10),   "text": (200, 255, 200), "accent": (0, 255, 100)},
+        "language":       {"bg": (35, 20, 50),   "text": (240, 220, 255), "accent": (180, 100, 255)},
+        "books":          {"bg": (45, 30, 15),   "text": (255, 245, 230), "accent": (220, 160, 50)},
+        "cooking":        {"bg": (50, 20, 10),   "text": (255, 240, 220), "accent": (255, 120, 50)},
     }
     return palettes.get(cat, palettes["facts"])

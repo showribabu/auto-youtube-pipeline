@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Add scripts dir to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import OUTPUT_DIR, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES
+from config import OUTPUT_DIR, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES, ENABLED_LANGUAGES
 from logger import get_logger
 from engine import generate_title_card, generate_frame_sequence, assemble_video, get_font
 from audio import run_audio_sync
@@ -72,8 +72,8 @@ def _prune_outputs(max_file_age_days: int = 7) -> None:
             pass
 
 
-def run_category(category: str, dry_run: bool = False) -> dict | None:
-    """Generate a video for one category and optionally upload it."""
+def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict | None:
+    """Generate a video for one category in a given language and optionally upload it."""
     import categories.kids as kids_mod
     import categories.news as news_mod
     import categories.weather as weather_mod
@@ -84,6 +84,10 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
     import categories.health as health_mod
     import categories.history as history_mod
     import categories.gaming as gaming_mod
+    import categories.language_learning as lang_mod
+    import categories.books as books_mod
+    import categories.cooking as cooking_mod
+    from multilang import translate_content
 
     generators = {
         "kids":           kids_mod.generate_kids_content,
@@ -96,6 +100,9 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
         "health":         health_mod.generate_health_content,
         "history":        history_mod.generate_history_content,
         "gaming":         gaming_mod.generate_gaming_content,
+        "language":       lang_mod.generate_language_content,
+        "books":          books_mod.generate_book_content,
+        "cooking":        cooking_mod.generate_cooking_content,
     }
 
     gen = generators.get(category)
@@ -103,15 +110,14 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
         logger.error(f"Unknown category: {category}")
         return None
 
-    if _count_today_uploads() >= MAX_VIDEOS_PER_DAY:
-        logger.info(f"Daily limit ({MAX_VIDEOS_PER_DAY}) reached for {category}. Skipping.")
-        return None
-
     try:
         content = gen()
     except Exception as e:
         logger.error(f"Content generation failed for {category}: {e}")
         return None
+
+    # Translate content for non-English languages
+    content = translate_content(content, lang)
 
     title      = content["title"]
     script     = content["full_script"]
@@ -123,7 +129,9 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = _slug(title)
-    out_dir = os.path.join(OUTPUT_DIR, category)
+    if lang != "en":
+        safe_title = f"{safe_title}_{lang}"
+    out_dir = os.path.join(OUTPUT_DIR, f"{category}_{lang}")
     os.makedirs(out_dir, exist_ok=True)
 
     output_path     = os.path.join(out_dir, f"{ts_str}_{safe_title}.mp4")
@@ -187,16 +195,18 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
     _ledger_append({
         "date": datetime.now().strftime("%Y-%m-%d"),
         "category": category,
+        "lang": lang,
         "title": title,
         "video_id": video_id,
         "video_path": output_path,
         "dry_run": dry_run,
     })
 
-    logger.info(f"Finished: {title} | Video ID: {video_id or 'dry-run'}")
+    logger.info(f"Finished: {title} [{lang}] | Video ID: {video_id or 'dry-run'}")
 
     return {
         "category": category,
+        "lang": lang,
         "title": title,
         "video_path": output_path,
         "video_id": video_id,
@@ -206,34 +216,41 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
 
 
 def run_all_categories(dry_run: bool = False):
-    """Run every category once (respects daily limits)."""
+    """Run every category × every enabled language (13 × 3 = 39 videos)."""
+    ALL_CATEGORIES = ["kids", "news", "weather", "facts", "motivational",
+                      "tech", "crypto", "health", "history", "gaming",
+                      "language", "books", "cooking"]
     results = []
-    for cat in ["kids", "news", "weather", "facts", "motivational"]:
-        logger.info(f"━━━ Running category: {cat} ━━━")
-        result = run_category(cat, dry_run=dry_run)
-        if result:
-            results.append(result)
-        else:
-            logger.warning(f"⚠ Category '{cat}' did not produce a video")
+    for cat in ALL_CATEGORIES:
+        for lang in ENABLED_LANGUAGES:
+            lang = lang.strip()
+            logger.info(f"━━━ Running category: {cat} / lang: {lang} ━━━")
+            result = run_category(cat, dry_run=dry_run, lang=lang)
+            if result:
+                results.append(result)
+            else:
+                logger.warning(f"⚠ Category '{cat}' [{lang}] did not produce a video")
+    logger.info(f"━━━ All done: {len(results)} / {len(ALL_CATEGORIES) * len(ENABLED_LANGUAGES)} videos produced ━━━")
     return results
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Auto YouTube Pipeline")
     parser.add_argument("--category", type=str, help="Run single category")
-    parser.add_argument("--run-all", action="store_true", help="Run all categories")
+    parser.add_argument("--lang", type=str, default="en", help="Language code (en, hi, te)")
+    parser.add_argument("--run-all", action="store_true", help="Run all categories × all languages")
     parser.add_argument("--scheduler", action="store_true", help="Start cron scheduler")
     parser.add_argument("--test", action="store_true", help="Dry run (no uploads)")
     args = parser.parse_args()
 
     if args.category:
-        r = run_category(args.category, dry_run=args.test)
+        r = run_category(args.category, dry_run=args.test, lang=args.lang)
         print(f"Result: {r}" if r else "No video generated")
     elif args.run_all:
         results = run_all_categories(dry_run=args.test)
         print(f"Generated {len(results)} video(s)")
     elif args.scheduler:
         from scheduler import start_scheduler
-        start_scheduler(dry_run=args.test)
+        start_scheduler(test_mode=args.test)
     else:
         parser.print_help()

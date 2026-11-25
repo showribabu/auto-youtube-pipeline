@@ -4,11 +4,13 @@ __pycache__/
 .venv/
 output/*
 !output/.gitkeep
+!output/upload_ledger.json
 logs/*
 !logs/.gitkeep
 cache/*
 !cache/.gitkeep
 config/.env
+config/client_secret.json
 config/yt_token.json
 test_*.mp3
 weather_test.mp3

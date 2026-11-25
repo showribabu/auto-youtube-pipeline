@@ -13,22 +13,23 @@ from config import (
 from logger import get_logger
 logger = get_logger("upload")
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 
 
 def _load_creds() -> Credentials:
     token_path = os.path.join(BASE_DIR, "config", "yt_token.json")
     creds = None
     if os.path.exists(token_path):
-        with open(token_path) as f:
+        with open(token_path, "r", encoding="utf-8") as f:
             creds = Credentials.from_authorized_user_info(json.load(f), SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         elif YOUTUBE_REFRESH_TOKEN:
             from google.auth.transport.requests import Request as Req
-            import requests as req_lib
-            # Construct minimal token data and use standard constructor
             token_data = {
                 "refresh_token": YOUTUBE_REFRESH_TOKEN,
                 "token_uri": "https://oauth2.googleapis.com/token",
@@ -38,15 +39,76 @@ def _load_creds() -> Credentials:
             }
             creds = Credentials(token=None, **token_data)
             creds.refresh(Req())
-        if not creds:
+        if not creds or not creds.valid:
             raise RuntimeError(
-                "No valid YouTube credentials. Set YOUTUBE_REFRESH_TOKEN in .env "
-                "or run the auth flow."
+                "No valid YouTube credentials found. Run python scripts/setup_auth.py once to authenticate."
             )
         os.makedirs(os.path.dirname(token_path), exist_ok=True)
-        with open(token_path, "w") as f:
+        with open(token_path, "w", encoding="utf-8") as f:
             f.write(creds.to_json())
     return creds
+
+
+def verify_youtube_channel() -> dict | None:
+    """Verify credentials and get authenticated YouTube channel information."""
+    try:
+        creds = _load_creds()
+        service = build("youtube", "v3", credentials=creds)
+        res = service.channels().list(part="snippet,statistics", mine=True).execute()
+        items = res.get("items", [])
+        if not items:
+            logger.warning("No channel found for current credentials.")
+            return None
+        ch = items[0]
+        snippet = ch.get("snippet", {})
+        stats = ch.get("statistics", {})
+        info = {
+            "channel_id": ch.get("id"),
+            "channel_title": snippet.get("title"),
+            "channel_url": f"https://www.youtube.com/channel/{ch.get('id')}",
+            "video_count": stats.get("videoCount"),
+            "subscriber_count": stats.get("subscriberCount"),
+            "view_count": stats.get("viewCount"),
+        }
+        logger.info(f"Verified Channel: {info['channel_title']} ({info['channel_url']})")
+        return info
+    except Exception as e:
+        logger.error(f"Failed to verify channel: {e}")
+        return None
+
+
+def verify_uploaded_videos(max_results: int = 15) -> list[dict]:
+    """Fetch recent videos published on the authenticated YouTube channel to verify end-to-end."""
+    try:
+        creds = _load_creds()
+        service = build("youtube", "v3", credentials=creds)
+        # Get channel upload playlist
+        res = service.channels().list(part="contentDetails", mine=True).execute()
+        items = res.get("items", [])
+        if not items:
+            return []
+        uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        
+        # Get items from upload playlist
+        playlist_res = service.playlistItems().list(
+            part="snippet,status",
+            playlistId=uploads_playlist_id,
+            maxResults=max_results,
+        ).execute()
+        
+        videos = []
+        for item in playlist_res.get("items", []):
+            vid = item["snippet"]["resourceId"]["videoId"]
+            videos.append({
+                "video_id": vid,
+                "title": item["snippet"]["title"],
+                "published_at": item["snippet"]["publishedAt"],
+                "url": f"https://www.youtube.com/watch?v={vid}",
+            })
+        return videos
+    except Exception as e:
+        logger.error(f"Failed to verify uploaded videos: {e}")
+        return []
 
 
 def upload_video(
@@ -63,9 +125,9 @@ def upload_video(
         service = build("youtube", "v3", credentials=creds)
         body = {
             "snippet": {
-                "title": title,
-                "description": description,
-                "tags": tags,
+                "title": title[:100],
+                "description": description[:5000],
+                "tags": tags[:30],
                 "categoryId": category_id,
             },
             "status": {
@@ -76,13 +138,23 @@ def upload_video(
         request = service.videos().insert(
             part="snippet,status",
             body=body,
-            media_body=MediaFileUpload(video_path, mimetype="video/mp4",
-                                        resumable=True),
+            media_body=MediaFileUpload(video_path, mimetype="video/mp4", resumable=True),
         )
-        logger.info(f"Uploading: {title}")
-        response = request.resumable_upload()
-        video_id = response.get("id", "unknown")
-        logger.info(f"Uploaded successfully. Video ID: {video_id}")
+        logger.info(f"Uploading to YouTube: {title}")
+        
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                logger.info(f"Upload progress: {int(status.progress() * 100)}%")
+        
+        video_id = response.get("id")
+        watch_url = f"https://www.youtube.com/watch?v={video_id}"
+        logger.info(f"✓ Video successfully published! URL: {watch_url}")
+        
+        if thumbnail_path and os.path.exists(thumbnail_path) and video_id:
+            set_thumbnail(video_id, thumbnail_path)
+            
         return video_id
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
@@ -97,8 +169,9 @@ def set_thumbnail(video_id: str, thumbnail_path: str) -> bool:
             videoId=video_id,
             media_body=MediaFileUpload(thumbnail_path, mimetype="image/jpeg"),
         ).execute()
-        logger.info(f"Thumbnail set for video {video_id}")
+        logger.info(f"Custom thumbnail set for video {video_id}")
         return True
     except Exception as e:
-        logger.error(f"Thumbnail upload failed: {e}", exc_info=True)
+        # YouTube requires phone verification on the channel to set custom thumbnails; auto-thumbnail is used otherwise
+        logger.info(f"Custom thumbnail skipped (channel uses auto-generated thumbnail): {e}")
         return False

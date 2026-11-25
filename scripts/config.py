@@ -50,7 +50,7 @@ KIDS_VOICE_FEMALE    = os.getenv("KIDS_VOICE_FEMALE", "en-US-JennyNeural")
 OUTPUT_WIDTH, OUTPUT_HEIGHT  = (lambda s: tuple(int(x) for x in s.split("x")))(os.getenv("OUTPUT_RESOLUTION", "1280x720"))
 OUTPUT_FPS                   = int(os.getenv("OUTPUT_FPS", "30"))
 DEFAULT_DURATION             = int(os.getenv("DEFAULT_VIDEO_DURATION", "60"))
-MAX_VIDEOS_PER_DAY           = int(os.getenv("MAX_VIDEOS_PER_DAY", "3"))
+MAX_VIDEOS_PER_DAY           = int(os.getenv("MAX_VIDEOS_PER_DAY", "50"))
 
 # ─── Schedule (cron) ───────────────────────────────────
 SCHEDULES = {
@@ -60,6 +60,19 @@ SCHEDULES = {
     "facts":           os.getenv("SCHEDULE_FACTS", "0 12 * * *"),
     "motivational":    os.getenv("SCHEDULE_MOTIVATIONAL", "0 18 * * *"),
 }
+
+# New category schedules
+SCHEDULES["tech"]           = os.getenv("SCHEDULE_TECH", "30 7 * * *")
+SCHEDULES["crypto"]         = os.getenv("SCHEDULE_CRYPTO", "0 9 * * *")
+SCHEDULES["health"]         = os.getenv("SCHEDULE_HEALTH", "30 8 * * *")
+SCHEDULES["history"]        = os.getenv("SCHEDULE_HISTORY", "0 10 * * *")
+SCHEDULES["gaming"]         = os.getenv("SCHEDULE_GAMING", "0 15 * * *")
+SCHEDULES["language"]       = os.getenv("SCHEDULE_LANGUAGE", "30 9 * * *")
+SCHEDULES["books"]          = os.getenv("SCHEDULE_BOOKS", "0 11 * * *")
+SCHEDULES["cooking"]        = os.getenv("SCHEDULE_COOKING", "0 13 * * *")
+
+# Language settings
+ENABLED_LANGUAGES = os.getenv("ENABLED_LANGUAGES", "en,hi,te").split(",")
 
 # ─── Retry ─────────────────────────────────────────────
 MAX_RETRIES   = int(os.getenv("MAX_RETRIES", "3"))

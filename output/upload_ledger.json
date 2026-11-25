@@ -1,0 +1,78 @@
+[
+  {
+    "date": "2026-11-25",
+    "category": "kids",
+    "title": "The Magic Paintbrush",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\kids\\20261125_001300_The_Magic_Paintbrush.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "news",
+    "title": "Daily News Roundup \u2014 Nov 25, 2026",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\news\\20261125_001302_Daily_News_Roundup_Nov_25_2026.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "weather",
+    "title": "Weather Update: London \u2014 5\u00b0C (Cloudy )",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\weather\\20261125_001306_Weather_Update_London_5C_Cloudy.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "facts",
+    "title": "Mind-Blowing Fact: Volcanic Thunderstorms",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\facts\\20261125_001309_Mind-Blowing_Fact_Volcanic_Thunderstorms.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "motivational",
+    "title": "Daily Motivation \u2014 Rise Every Day",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\motivational\\20261125_001311_Daily_Motivation_Rise_Every_Day.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "language",
+    "lang": "en",
+    "title": "Word of the Day: Enigmatic \u2014 Build Your Vocabulary",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\language_en\\20261125_225745_Word_of_the_Day_Enigmatic_Build_Your_Vocabulary.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "motivational",
+    "lang": "hi",
+    "title": "[\u0939\u093f\u0902\u0926\u0940] Daily Motivation \u2014 Wisdom for Today",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\motivational_hi\\20261125_225758_Daily_Motivation_Wisdom_for_Today_hi.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "cooking",
+    "lang": "te",
+    "title": "\u0c28\u0c47\u0c1f\u0c3f \u0c30\u0c41\u0c1a\u0c3f\u0c15\u0c30\u0c2e\u0c48\u0c28 \u0c35\u0c02\u0c1f\u0c15\u0c02 \u2014 \u0c06\u0c30\u0c4b\u0c17\u0c4d\u0c2f\u0c02 \u0c2e\u0c30\u0c3f\u0c2f\u0c41 \u0c30\u0c41\u0c1a\u0c3f",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\cooking_te\\20261125_225810_video_te.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-25",
+    "category": "motivational",
+    "lang": "en",
+    "title": "Daily Motivation \u2014 Rise Every Day",
+    "video_id": "Dw0B4fvX2hQ",
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\motivational_en\\20261125_230831_Daily_Motivation_Rise_Every_Day.mp4",
+    "dry_run": false
+  }
+]

@@ -1,14 +1,13 @@
-# Auto YouTube Pipeline — Windows Launcher
-# Run this to start the always-on scheduler, or use individual commands below.
+﻿# Auto YouTube Pipeline — Windows Launcher
 $ErrorActionPreference = "Continue"
-$venvPath = "$PSScriptRoot\.venv"
+$venvPython = "$PSScriptRoot\.venv\Scripts\python.exe"
 $scriptsDir = "$PSScriptRoot\scripts"
-$outputDir = "$PSScriptRoot\output"
 
-# Activate venv or create one
-if (!(Test-Path "$venvPath\Scripts\python.exe")) {
-    Write-Host "Creating virtual environment..."
-    & python -m venv $venvPath
-    & "$venvPath\Scripts\pip.exe" install -q -r "$PSScriptRoot\requirements.txt"
+if (Test-Path $venvPython) {
+    $pythonExe = $venvPython
+} else {
+    $pythonExe = (Get-Command python).Source
 }
-& "$venvPath\Scripts\python.exe" "$scriptsDir\pipeline.py" @args
+
+Write-Host "Running Auto YouTube Pipeline with: $pythonExe"
+& "$pythonExe" "$scriptsDir\pipeline.py" @args
