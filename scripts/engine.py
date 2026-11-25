@@ -5,7 +5,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from config import (
     OUTPUT_WIDTH, OUTPUT_HEIGHT, OUTPUT_FPS, DEFAULT_DURATION,
-    FFMPEG, CACHE_DIR, ASSETS_DIR
+    FFMPEG, FFPROBE, CACHE_DIR, ASSETS_DIR
 )
 from logger import get_logger
 logger = get_logger("engine")
@@ -163,6 +163,22 @@ def generate_frame_sequence(
     return frames
 
 
+def get_audio_duration(audio_path: str) -> float:
+    """Retrieve exact duration of audio in seconds."""
+    cmd = [
+        FFPROBE, "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        audio_path
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return max(3.0, float(proc.stdout.strip()))
+    except Exception as e:
+        logger.warning(f"Could not probe audio duration ({e}), defaulting to 25.0s")
+        return 25.0
+
+
 def assemble_video(
     frames: list[str],
     audio_path: str,
@@ -171,63 +187,70 @@ def assemble_video(
 ) -> str:
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio not found: {audio_path}")
+    if not frames:
+        raise ValueError("No frames provided to assemble_video")
 
-    # Build a file-list for FFmpeg concat — escape Windows backslashes to forward slashes
+    # Calculate exact duration each frame must display to match the audio
+    audio_dur = get_audio_duration(audio_path)
+    frame_dur = max(1.5, audio_dur / len(frames))
+    logger.info(f"Assembling video: total audio {audio_dur:.2f}s, {len(frames)} frames @ {frame_dur:.2f}s per frame")
+
+    # Build a file-list for FFmpeg concat demuxer
     safe_frames = [fp.replace("\\", "/") for fp in frames]
 
     with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
         for fp in safe_frames:
             f.write(f"file '{fp}'\n")
-            f.write(f"duration {1/fps}\n")
+            f.write(f"duration {frame_dur:.3f}\n")
+        # FFmpeg concat demuxer requires the last file to be repeated at the end
+        f.write(f"file '{safe_frames[-1]}'\n")
         temp_list = f.name
 
     video_path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
 
+    # Step 1: Render timed video stream from frames
     cmd = [
         FFMPEG, "-y",
         "-f", "concat", "-safe", "0", "-i", temp_list,
-        "-framerate", str(fps),
         "-c:v", "libx264", "-preset", "fast", "-crf", "18",
         "-pix_fmt", "yuv420p",
         "-an", video_path,
     ]
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE)
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     os.unlink(temp_list)
     if proc.returncode != 0:
         raise RuntimeError(f"FFmpeg video encode failed: {proc.stderr.decode()}")
 
-    # Generate subtle soothing ambient background music (gentle 220Hz + 330Hz harmonic pad at -24dB)
-    # and mix it seamlessly under the voiceover
+    # Step 2: Merge timed video with speech audio and ambient soothing background music
     audio_cmd = [
         FFMPEG, "-y",
         "-i", video_path,
         "-i", audio_path,
         "-f", "lavfi", "-i", "sine=frequency=220:sample_rate=44100",
         "-filter_complex",
-        "[2:a]volume=0.03,lowpass=f=350[bgm]; [1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
+        f"[2:a]volume=0.025,lowpass=f=350[bgm]; [1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
         "-map", "0:v",
         "-map", "[aout]",
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
-        "-shortest",
+        "-t", f"{audio_dur:.2f}",
         output_path,
     ]
     proc2 = subprocess.run(audio_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     os.unlink(video_path)
     if proc2.returncode != 0:
-        # Fallback to simple audio merge if amix filter encounters any device specific issue
         logger.warning(f"BGM mix failed ({proc2.stderr.decode()[:100]}), falling back to direct audio merge")
         fallback_cmd = [
             FFMPEG, "-y",
             "-i", video_path, "-i", audio_path,
-            "-c:v", "copy", "-c:a", "aac", "-shortest",
+            "-c:v", "copy", "-c:a", "aac",
+            "-t", f"{audio_dur:.2f}",
             output_path,
         ]
         subprocess.run(fallback_cmd, check=True)
 
-    logger.info(f"Video assembled with ambient audio: {output_path}")
+    logger.info(f"✓ Video successfully assembled: {output_path} (Duration: {audio_dur:.1f}s)")
     return output_path
 
 
