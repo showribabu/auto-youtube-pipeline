@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from config import (
     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN,
-    OUTPUT_DIR
+    OUTPUT_DIR, BASE_DIR
 )
 from logger import get_logger
 logger = get_logger("upload")

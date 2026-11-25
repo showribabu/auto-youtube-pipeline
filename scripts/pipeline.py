@@ -79,6 +79,11 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
     import categories.weather as weather_mod
     import categories.facts as facts_mod
     import categories.motivational as motiv_mod
+    import categories.tech as tech_mod
+    import categories.crypto as crypto_mod
+    import categories.health as health_mod
+    import categories.history as history_mod
+    import categories.gaming as gaming_mod
 
     generators = {
         "kids":           kids_mod.generate_kids_content,
@@ -86,6 +91,11 @@ def run_category(category: str, dry_run: bool = False) -> dict | None:
         "weather":        weather_mod.generate_weather_content,
         "facts":          facts_mod.generate_fact_content,
         "motivational":   motiv_mod.generate_motivational_content,
+        "tech":           tech_mod.generate_tech_content,
+        "crypto":         crypto_mod.generate_crypto_content,
+        "health":         health_mod.generate_health_content,
+        "history":        history_mod.generate_history_content,
+        "gaming":         gaming_mod.generate_gaming_content,
     }
 
     gen = generators.get(category)
