@@ -391,7 +391,7 @@ def translate_content(content: dict, lang: str) -> dict:
         f"{new_title}\n\n"
         f"{new_script[:200]}...\n\n"
         f"🌐 Language: {lang_info['tag']}\n"
-        f"🔔 Daily automated upload. Subscribe for more!\n\n"
+        f"🔔 Subscribe to OmniPulse Daily for fresh daily stories & insights!\n\n"
         f"#{cat.title()} #{lang_info['name']} #{cat.title()}News #Shorts #DailyUpdates"
     )
 
