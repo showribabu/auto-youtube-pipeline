@@ -10,9 +10,22 @@ from config import (
 from logger import get_logger
 logger = get_logger("engine")
 
-def get_font(size: int):
-    # Try Indic/Unicode fonts first for multilingual support, then standard fonts
-    candidates = [
+def get_font(size: int, text: str = ""):
+    # Detect Indic script for guaranteed character rendering
+    has_telugu = any(0x0C00 <= ord(c) <= 0x0C7F for c in text)
+    has_hindi = any(0x0900 <= ord(c) <= 0x097F for c in text)
+
+    candidates = []
+    if has_telugu:
+        candidates.append(os.path.join(ASSETS_DIR, "fonts", "NotoSansTelugu.ttf"))
+        candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+    elif has_hindi:
+        candidates.append(os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"))
+        candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+
+    candidates.extend([
+        os.path.join(ASSETS_DIR, "fonts", "NotoSansTelugu.ttf"),
+        os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"),
         "C:/Windows/Fonts/Nirmala.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf",
         "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
@@ -22,10 +35,7 @@ def get_font(size: int):
         os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
         "C:/Windows/Fonts/segoeui.ttf",
         "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/times.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-    ]
+    ])
     for path in candidates:
         if os.path.exists(path):
             try:
@@ -119,7 +129,8 @@ def generate_frame_sequence(
     width = 1080 if is_shorts else OUTPUT_WIDTH
     height = 1920 if is_shorts else OUTPUT_HEIGHT
 
-    font_big = get_font(int(width * (0.065 if is_shorts else 0.055)))
+    full_sample_text = " ".join(script_lines)
+    font_big = get_font(int(width * (0.065 if is_shorts else 0.055)), text=full_sample_text)
     font_badge = get_font(int(width * (0.035 if is_shorts else 0.025)))
     ts = int(datetime.now().timestamp())
 
