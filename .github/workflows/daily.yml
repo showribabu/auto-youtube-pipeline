@@ -3,7 +3,7 @@ name: Daily YouTube Pipeline
 on:
   schedule:
     # 4 Automated Daily Broadcasts (UTC):
-    - cron: '0 2 * * *'   # 07:30 AM IST (Morning: News, Weather, Health & Motivation)
+    - cron: '0 2 * * *'   # 07:30 AM IST (Morning: Devotional, News, Weather, Health & Motivation)
     - cron: '0 7 * * *'   # 12:30 PM IST (Midday: Facts, Recipes, Language Learning)
     - cron: '0 12 * * *'  # 05:30 PM IST (Afternoon: Tech/AI, Crypto, Books, Gaming)
     - cron: '0 15 * * *'  # 08:30 PM IST (Evening: Kids Stories, History, Reflections)
@@ -18,6 +18,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   pipeline-run:
     runs-on: ubuntu-latest
@@ -26,6 +29,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,7 +49,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Verify FFmpeg & Fonts
+      - name: Verify FFmpeg & Multilingual Fonts
         run: |
           ffmpeg -version | head -1
           fc-list :lang=te || true
@@ -69,8 +74,10 @@ jobs:
 
       - name: Commit Updated Upload Ledger
         if: always()
+        continue-on-error: true
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase || true
           git add output/upload_ledger.json || true
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update upload ledger [skip ci]" && git push)

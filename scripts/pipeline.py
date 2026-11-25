@@ -203,7 +203,7 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     if not dry_run:
         try:
             video_id = upload_video(output_path, title, description, tags)
-            if video_id and thumbnail_path:
+            if video_id and video_id != "QUOTA_EXCEEDED" and thumbnail_path:
                 set_thumbnail(video_id, thumbnail_path)
         except Exception as e:
             logger.error(f"Upload failed: {e}")
@@ -211,6 +211,9 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.info(f"[DRY RUN] Would upload: {output_path}")
 
     _prune_outputs()
+
+    status_str = "Published: " + video_id if (video_id and video_id != "QUOTA_EXCEEDED") else ("Quota Deferred" if video_id == "QUOTA_EXCEEDED" else "dry-run")
+    logger.info(f"Completed: {title} [{lang}] | Status: {status_str}")
 
     _ledger_append({
         "date": datetime.now().strftime("%Y-%m-%d"),

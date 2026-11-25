@@ -1,14 +1,16 @@
 import os
 import json
+import time
 import datetime
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError, ResumableUploadError
 from config import (
     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN,
-    OUTPUT_DIR, BASE_DIR
+    OUTPUT_DIR, BASE_DIR, MAX_RETRIES, RETRY_DELAY
 )
 from logger import get_logger
 logger = get_logger("upload")
@@ -82,14 +84,12 @@ def verify_uploaded_videos(max_results: int = 15) -> list[dict]:
     try:
         creds = _load_creds()
         service = build("youtube", "v3", credentials=creds)
-        # Get channel upload playlist
         res = service.channels().list(part="contentDetails", mine=True).execute()
         items = res.get("items", [])
         if not items:
             return []
         uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
         
-        # Get items from upload playlist
         playlist_res = service.playlistItems().list(
             part="snippet,status",
             playlistId=uploads_playlist_id,
@@ -120,45 +120,66 @@ def upload_video(
     privacy_status: str = "public",
     thumbnail_path: str | None = None,
 ) -> str | None:
-    try:
-        creds = _load_creds()
-        service = build("youtube", "v3", credentials=creds)
-        body = {
-            "snippet": {
-                "title": title[:100],
-                "description": description[:5000],
-                "tags": tags[:30],
-                "categoryId": category_id,
-            },
-            "status": {
-                "privacyStatus": privacy_status,
-                "selfDeclaredMadeForKids": False,
-            },
-        }
-        request = service.videos().insert(
-            part="snippet,status",
-            body=body,
-            media_body=MediaFileUpload(video_path, mimetype="video/mp4", resumable=True),
-        )
-        logger.info(f"Uploading to YouTube: {title}")
-        
-        response = None
-        while response is None:
-            status, response = request.next_chunk()
-            if status:
-                logger.info(f"Upload progress: {int(status.progress() * 100)}%")
-        
-        video_id = response.get("id")
-        watch_url = f"https://www.youtube.com/watch?v={video_id}"
-        logger.info(f"✓ Video successfully published! URL: {watch_url}")
-        
-        if thumbnail_path and os.path.exists(thumbnail_path) and video_id:
-            set_thumbnail(video_id, thumbnail_path)
+    """Uploads a video to YouTube with automatic retry, exponential backoff, and quota awareness."""
+    max_attempts = max(1, MAX_RETRIES)
+    
+    for attempt in range(1, max_attempts + 1):
+        try:
+            creds = _load_creds()
+            service = build("youtube", "v3", credentials=creds)
+            body = {
+                "snippet": {
+                    "title": title[:100],
+                    "description": description[:5000],
+                    "tags": tags[:30],
+                    "categoryId": category_id,
+                },
+                "status": {
+                    "privacyStatus": privacy_status,
+                    "selfDeclaredMadeForKids": False,
+                },
+            }
+            request = service.videos().insert(
+                part="snippet,status",
+                body=body,
+                media_body=MediaFileUpload(video_path, mimetype="video/mp4", resumable=True),
+            )
+            logger.info(f"Uploading to YouTube (Attempt {attempt}/{max_attempts}): {title}")
             
-        return video_id
-    except Exception as e:
-        logger.error(f"Upload failed: {e}", exc_info=True)
-        return None
+            response = None
+            while response is None:
+                status, response = request.next_chunk()
+                if status:
+                    logger.info(f"Upload progress: {int(status.progress() * 100)}%")
+            
+            video_id = response.get("id")
+            watch_url = f"https://www.youtube.com/watch?v={video_id}"
+            logger.info(f"✓ Video successfully published! URL: {watch_url}")
+            
+            if thumbnail_path and os.path.exists(thumbnail_path) and video_id:
+                set_thumbnail(video_id, thumbnail_path)
+                
+            return video_id
+
+        except Exception as e:
+            err_str = str(e)
+            # 1. YouTube Daily Quota Exceeded (not a bug — 24-hr safety limit on new channels)
+            if "uploadLimitExceeded" in err_str:
+                logger.warning(
+                    f"⚠️ YouTube 24-Hour Daily Upload Limit Reached (uploadLimitExceeded). "
+                    f"Video '{title}' is rendered & saved locally. Will resume on next scheduled run."
+                )
+                return "QUOTA_EXCEEDED"
+
+            # 2. Transient network or 5xx server errors -> Retry with backoff
+            is_transient = any(code in err_str for code in ["500", "502", "503", "504", "timed out", "ConnectionResetError"])
+            if attempt < max_attempts and is_transient:
+                backoff = RETRY_DELAY * attempt
+                logger.warning(f"Upload attempt {attempt} failed ({e}). Retrying in {backoff}s...")
+                time.sleep(backoff)
+            else:
+                logger.error(f"Upload permanently failed for '{title}': {e}")
+                return None
 
 
 def set_thumbnail(video_id: str, thumbnail_path: str) -> bool:
@@ -172,6 +193,5 @@ def set_thumbnail(video_id: str, thumbnail_path: str) -> bool:
         logger.info(f"Custom thumbnail set for video {video_id}")
         return True
     except Exception as e:
-        # YouTube requires phone verification on the channel to set custom thumbnails; auto-thumbnail is used otherwise
         logger.info(f"Custom thumbnail skipped (channel uses auto-generated thumbnail): {e}")
         return False
