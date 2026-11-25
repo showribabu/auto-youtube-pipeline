@@ -87,9 +87,11 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     import categories.language_learning as lang_mod
     import categories.books as books_mod
     import categories.cooking as cooking_mod
+    import categories.devotional as dev_mod
     from multilang import translate_content
 
     generators = {
+        "devotional":     dev_mod.generate_devotional_content,
         "kids":           kids_mod.generate_kids_content,
         "news":           news_mod.generate_news_content,
         "weather":        weather_mod.generate_weather_content,
@@ -234,10 +236,10 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
 
 
 def run_all_categories(dry_run: bool = False):
-    """Run every category × every enabled language (13 × 3 = 39 videos)."""
-    ALL_CATEGORIES = ["kids", "news", "weather", "facts", "motivational",
-                      "tech", "crypto", "health", "history", "gaming",
-                      "language", "books", "cooking"]
+    """Run every category × every enabled language (14 categories × 3 = 42 videos)."""
+    ALL_CATEGORIES = ["devotional", "weather", "news", "facts", "motivational",
+                      "health", "language", "books", "cooking", "kids",
+                      "tech", "crypto", "history", "gaming"]
     results = []
     for cat in ALL_CATEGORIES:
         for lang in ENABLED_LANGUAGES:

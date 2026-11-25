@@ -98,7 +98,7 @@ def generate_title_card(
 # Shorts categories default to vertical 9:16 (1080x1920) for viral reach
 SHORTS_CATEGORIES = {
     "facts", "motivational", "health", "language", "cooking",
-    "crypto", "tech", "history"
+    "crypto", "tech", "history", "devotional"
 }
 
 def generate_frame_sequence(
@@ -261,5 +261,6 @@ def _get_category_palette(cat: str) -> dict:
         "language":       {"bg": (35, 20, 50),   "text": (240, 220, 255), "accent": (180, 100, 255)},
         "books":          {"bg": (45, 30, 15),   "text": (255, 245, 230), "accent": (220, 160, 50)},
         "cooking":        {"bg": (50, 20, 10),   "text": (255, 240, 220), "accent": (255, 120, 50)},
+        "devotional":     {"bg": (32, 14, 8),    "text": (255, 248, 225), "accent": (255, 160, 20)},
     }
     return palettes.get(cat, palettes["facts"])
