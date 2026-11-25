@@ -26,7 +26,18 @@ def _load_creds() -> Credentials:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         elif YOUTUBE_REFRESH_TOKEN:
-            creds = Credentials.builder_from_string(YOUTUBE_REFRESH_TOKEN, scopes=SCOPES)
+            from google.auth.transport.requests import Request as Req
+            import requests as req_lib
+            # Construct minimal token data and use standard constructor
+            token_data = {
+                "refresh_token": YOUTUBE_REFRESH_TOKEN,
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "scopes": SCOPES,
+            }
+            creds = Credentials(token=None, **token_data)
+            creds.refresh(Req())
         if not creds:
             raise RuntimeError(
                 "No valid YouTube credentials. Set YOUTUBE_REFRESH_TOKEN in .env "
