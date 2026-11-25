@@ -244,16 +244,26 @@ def run_all_categories(dry_run: bool = False):
                       "health", "language", "books", "cooking", "kids",
                       "tech", "crypto", "history", "gaming"]
     results = []
+    quota_hit = False
     for cat in ALL_CATEGORIES:
+        if quota_hit:
+            break
         for lang in ENABLED_LANGUAGES:
             lang = lang.strip()
             logger.info(f"━━━ Running category: {cat} / lang: {lang} ━━━")
             result = run_category(cat, dry_run=dry_run, lang=lang)
             if result:
                 results.append(result)
+                if result.get("video_id") == "QUOTA_EXCEEDED":
+                    logger.warning("Stopping remaining uploads for this run because YouTube 24-hour upload limit was reached.")
+                    quota_hit = True
+                    break
             else:
                 logger.warning(f"⚠ Category '{cat}' [{lang}] did not produce a video")
-    logger.info(f"━━━ All done: {len(results)} / {len(ALL_CATEGORIES) * len(ENABLED_LANGUAGES)} videos produced ━━━")
+
+    published = sum(1 for r in results if r.get("video_id") and r["video_id"] != "QUOTA_EXCEEDED")
+    deferred = sum(1 for r in results if r.get("video_id") == "QUOTA_EXCEEDED")
+    logger.info(f"━━━ Summary: {len(results)} generated | {published} published | {deferred} quota-deferred ━━━")
     return results
 
 
@@ -269,9 +279,14 @@ if __name__ == "__main__":
     if args.category:
         r = run_category(args.category, dry_run=args.test, lang=args.lang)
         print(f"Result: {r}" if r else "No video generated")
+        if not args.test and (not r or not r.get("video_id") or r.get("video_id") == "QUOTA_EXCEEDED"):
+            sys.exit(1)
     elif args.run_all:
         results = run_all_categories(dry_run=args.test)
-        print(f"Generated {len(results)} video(s)")
+        published = sum(1 for r in results if r.get("video_id") and r["video_id"] != "QUOTA_EXCEEDED")
+        print(f"Generated {len(results)} video(s), Published {published} video(s)")
+        if not args.test and published == 0:
+            sys.exit(1)
     elif args.scheduler:
         from scheduler import start_scheduler
         start_scheduler(test_mode=args.test)
