@@ -50,17 +50,21 @@ def get_font(size: int, text: str = ""):
     elif has_hindi:
         candidates.append(os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"))
         candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+    else:
+        # Pure Latin / English text -> use bold Latin fonts first
+        candidates.extend([
+            os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
+            os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans.ttf"),
+            "C:/Windows/Fonts/segoeuib.ttf",
+            "C:/Windows/Fonts/arialbd.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ])
 
     candidates.extend([
+        os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
         os.path.join(ASSETS_DIR, "fonts", "NotoSansTelugu.ttf"),
         os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"),
         "C:/Windows/Fonts/Nirmala.ttc",
-        "/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
-        os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
-        os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans.ttf"),
-        "C:/Windows/Fonts/segoeuib.ttf",
-        "C:/Windows/Fonts/arialbd.ttf",
     ])
     for path in candidates:
         if os.path.exists(path):
@@ -90,8 +94,10 @@ def _fetch_background_image(category: str, width: int, height: int, slide_idx: i
                 raw = resp.read()
                 if len(raw) > 8000:
                     img = Image.open(io.BytesIO(raw)).convert("RGB")
-                    if img.size != (width, height):
-                        img = img.resize((width, height), Image.Resampling.LANCZOS)
+                    # Crop bottom 6% to ensure zero corner watermarks, then resize cleanly
+                    ow, oh = img.size
+                    img = img.crop((0, 0, ow, int(oh * 0.94)))
+                    img = img.resize((width, height), Image.Resampling.LANCZOS)
                     # Slightly darken image for clean text contrast
                     img = ImageEnhance.Brightness(img).enhance(0.68)
                     return img
@@ -178,7 +184,7 @@ def generate_frame_sequence(
 
     full_sample_text = " ".join(script_lines)
     font_big = get_font(int(width * (0.056 if is_shorts else 0.048)), text=full_sample_text)
-    font_brand = get_font(int(width * (0.030 if is_shorts else 0.022)))
+    font_brand = get_font(int(width * (0.030 if is_shorts else 0.022)), text="OMNIPULSE DAILY")
     ts = int(datetime.now().timestamp())
 
     # Fetch up to 3 distinct real background images per video and cycle smoothly
