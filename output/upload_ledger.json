@@ -79,5 +79,14 @@
     "video_id": "juInIgObAH0",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261126_153028_Book_Summary_The_Power_of_Now_by_Eckhart_Tolle_Shorts_hi.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "devotional",
+    "lang": "te",
+    "title": "\u0c2d\u0c17\u0c35\u0c26\u0c4d\u0c17\u0c40\u0c24 \u0c38\u0c02\u0c26\u0c47\u0c36\u0c02 \u2014 \u0c35\u0c3f\u0c36\u0c4d\u0c35\u0c3e\u0c38\u0c02 \u0c2e\u0c30\u0c3f\u0c2f\u0c41 \u0c2d\u0c15\u0c4d\u0c24\u0c3f \u0c2a\u0c4d\u0c30\u0c2d\u0c3e\u0c35\u0c02 #Shorts",
+    "video_id": "ZBmyKOx4ds8",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/devotional_te/20261126_175154_Shorts_te.mp4",
+    "dry_run": false
   }
 ]
