@@ -88,5 +88,14 @@
     "video_id": "ZBmyKOx4ds8",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/devotional_te/20261126_175154_Shorts_te.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "weather",
+    "lang": "te",
+    "title": "\u0c35\u0c3f\u0c36\u0c3e\u0c16\u0c2a\u0c1f\u0c4d\u0c28\u0c02 \u0c35\u0c3e\u0c24\u0c3e\u0c35\u0c30\u0c23 \u0c38\u0c2e\u0c3e\u0c1a\u0c3e\u0c30\u0c02 \u2014 23\u00b0C (Patchy rain nearby) #Shorts",
+    "video_id": "6rVaI17I75Q",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/weather_te/20261126_181247_23C_Patchy_rain_nearby_Shorts_te.mp4",
+    "dry_run": false
   }
 ]
