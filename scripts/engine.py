@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import random
 import urllib.request
 import urllib.parse
@@ -46,17 +47,26 @@ CATEGORY_VISUAL_PROMPTS = {
 
 
 def get_font(size: int, text: str = ""):
-    """Select the best font supporting Telugu, Hindi (Devanagari), or Latin scripts."""
+    """Select the best font supporting Telugu, Hindi (Devanagari), or Latin scripts with zero glyph missing boxes."""
     has_telugu = any(0x0C00 <= ord(c) <= 0x0C7F for c in text)
     has_hindi = any(0x0900 <= ord(c) <= 0x097F for c in text)
 
     candidates = []
+    # Nirmala.ttc contains full Telugu, Devanagari, AND full Latin English characters
+    nirmala_local = os.path.join(ASSETS_DIR, "fonts", "Nirmala.ttc")
+    if os.path.exists(nirmala_local):
+        candidates.append(nirmala_local)
+    if os.path.exists("C:/Windows/Fonts/Nirmala.ttc"):
+        candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+
     if has_telugu:
         candidates.append(os.path.join(ASSETS_DIR, "fonts", "NotoSansTelugu.ttf"))
-        candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+        candidates.append("/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf")
+        candidates.append("/usr/share/fonts/truetype/lohit-telu/Lohit-Telugu.ttf")
     elif has_hindi:
         candidates.append(os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"))
-        candidates.append("C:/Windows/Fonts/Nirmala.ttc")
+        candidates.append("/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf")
+        candidates.append("/usr/share/fonts/truetype/lohit-deva/Lohit-Devanagari.ttf")
     else:
         # Pure Latin / English text -> use bold Latin fonts first
         candidates.extend([
@@ -71,7 +81,6 @@ def get_font(size: int, text: str = ""):
         os.path.join(ASSETS_DIR, "dejavu-fonts-ttf-2.37", "ttf", "DejaVuSans-Bold.ttf"),
         os.path.join(ASSETS_DIR, "fonts", "NotoSansTelugu.ttf"),
         os.path.join(ASSETS_DIR, "fonts", "NotoSansDevanagari.ttf"),
-        "C:/Windows/Fonts/Nirmala.ttc",
     ])
     for path in candidates:
         if os.path.exists(path):
@@ -298,9 +307,11 @@ def generate_cinematic_thumbnail(
     draw.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
 
     # Main Headline (Big, Bold, Punchy at Upper Third)
-    font_title = get_font(int(width * (0.068 if is_shorts else 0.054)), text=title)
+    clean_title = re.sub(r'#\w+', '', title).strip()
+    clean_title = re.sub(r'\s+', ' ', clean_title)
+    font_title = get_font(int(width * (0.068 if is_shorts else 0.054)), text=clean_title)
     max_w = width - int(width * 0.14)
-    wrapped = _wrap_text(draw, title.strip(), font_title, max_w)
+    wrapped = _wrap_text(draw, clean_title, font_title, max_w)
     wrapped = wrapped[:3]
     line_h = int(font_title.size * 1.34)
     start_y = badge_y + font_badge.size + 24
@@ -431,8 +442,10 @@ def generate_frame_sequence(
         draw_hook.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
 
         # Big Title Hook (Upper third above character)
-        font_hook = get_font(int(width * (0.066 if is_shorts else 0.052)), text=title)
-        hook_lines = _wrap_text(draw_hook, title.strip(), font_hook, width - int(width * 0.14))[:3]
+        clean_title = re.sub(r'#\w+', '', title).strip()
+        clean_title = re.sub(r'\s+', ' ', clean_title)
+        font_hook = get_font(int(width * (0.066 if is_shorts else 0.052)), text=clean_title)
+        hook_lines = _wrap_text(draw_hook, clean_title, font_hook, width - int(width * 0.14))[:3]
         h_line_h = int(font_hook.size * 1.36)
         h_start_y = badge_y + font_badge.size + 24
 
