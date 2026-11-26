@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import html
 import random
 import urllib.request
 import urllib.parse
@@ -91,16 +92,36 @@ def get_font(size: int, text: str = ""):
     return ImageFont.load_default()
 
 
+CURATED_CATEGORY_FALLBACKS = {
+    "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?w={w}&h={h}&fit=crop",
+    "crypto": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w={w}&h={h}&fit=crop",
+    "devotional": "https://images.unsplash.com/photo-1609342122563-a43ac8917a3a?w={w}&h={h}&fit=crop",
+    "weather": "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w={w}&h={h}&fit=crop",
+    "news": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w={w}&h={h}&fit=crop",
+    "motivational": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w={w}&h={h}&fit=crop",
+    "facts": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w={w}&h={h}&fit=crop",
+    "health": "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w={w}&h={h}&fit=crop",
+    "history": "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w={w}&h={h}&fit=crop",
+    "books": "https://images.unsplash.com/photo-1507842229451-7f01be8610ce?w={w}&h={h}&fit=crop",
+    "cooking": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w={w}&h={h}&fit=crop",
+    "kids": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w={w}&h={h}&fit=crop",
+    "gaming": "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w={w}&h={h}&fit=crop",
+    "language": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w={w}&h={h}&fit=crop",
+}
+
+
 def _fetch_background_image(category: str, width: int, height: int, slide_idx: int) -> Image.Image | None:
-    """Fetch a real, high-resolution topic-matched background image (Pollinations AI -> Picsum fallback)."""
-    base_prompt = CATEGORY_VISUAL_PROMPTS.get(category, "cinematic dramatic nature landscape photography")
+    """Fetch a real, high-resolution topic-matched background image (Pollinations AI -> Topic-Curated Unsplash fallback)."""
+    base_prompt = CATEGORY_VISUAL_PROMPTS.get(category, "cinematic dramatic technology artificial intelligence cyber photography")
     seed = int(datetime.now().timestamp()) + slide_idx * 137
 
     # 1. Primary: Topic-specific visual via Pollinations
     encoded_prompt = urllib.parse.quote(f"{base_prompt}, scene {slide_idx + 1}, high quality 4k")
+    fallback_url = CURATED_CATEGORY_FALLBACKS.get(category, "https://images.unsplash.com/photo-1518770660439-4636190af475?w={w}&h={h}&fit=crop").format(w=width, h=height)
+
     urls = [
         f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true",
-        f"https://picsum.photos/{width}/{height}?random={seed}",
+        fallback_url,
     ]
 
     for url in urls:
@@ -266,15 +287,6 @@ def generate_cinematic_thumbnail(
         d_overlay.line([(0, y), (width, y)], fill=(6, 8, 16, alpha))
 
     combined = Image.alpha_composite(img.convert("RGBA"), overlay)
-
-    # 2. Composite High-Retention Thematic Character / Story Art in Center
-    try:
-        art_cy = int(height * (0.50 if is_shorts else 0.48))
-        thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
-        combined = Image.alpha_composite(combined, thematic_art)
-    except Exception as e:
-        logger.warning(f"Could not composite thematic artwork on thumbnail: {e}")
-
     draw = ImageDraw.Draw(combined, "RGBA")
     cx = width // 2
 
@@ -417,15 +429,6 @@ def generate_frame_sequence(
     if title:
         hook_bg = bg_pool[0].copy() if bg_pool else Image.new("RGB", (width, height), color=palette["bg"])
         rgba_hook = _draw_gradient_overlay(hook_bg)
-
-        # Thematic Character / Visual Art in center
-        try:
-            art_cy = int(height * (0.60 if is_shorts else 0.55))
-            thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
-            rgba_hook = Image.alpha_composite(rgba_hook, thematic_art)
-        except Exception as e:
-            logger.warning(f"Could not composite intro art: {e}")
-
         draw_hook = ImageDraw.Draw(rgba_hook, "RGBA")
 
         # Top Channel Crest
@@ -446,13 +449,14 @@ def generate_frame_sequence(
         )
         draw_hook.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
 
-        # Big Title Hook (Upper third above character)
+        # Big Title Hook (Centered prominently)
         clean_title = re.sub(r'#\w+', '', title).strip()
         clean_title = re.sub(r'\s+', ' ', clean_title)
         font_hook = get_font(int(width * (0.066 if is_shorts else 0.052)), text=clean_title)
         hook_lines = _wrap_text(draw_hook, clean_title, font_hook, width - int(width * 0.14))[:3]
         h_line_h = int(font_hook.size * 1.36)
-        h_start_y = badge_y + font_badge.size + 24
+        h_total_h = len(hook_lines) * h_line_h
+        h_start_y = int(height * (0.46 if is_shorts else 0.40)) - h_total_h // 2
 
         for k, hl in enumerate(hook_lines):
             hl_w = draw_hook.textlength(hl, font=font_hook)
@@ -481,18 +485,9 @@ def generate_frame_sequence(
             base_bg = Image.new("RGB", (width, height), color=palette["bg"])
 
         rgba_img = _draw_gradient_overlay(base_bg)
-
-        # Thematic Character / Story Art in upper-mid
-        try:
-            art_cy = int(height * (0.36 if is_shorts else 0.32))
-            thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
-            rgba_img = Image.alpha_composite(rgba_img, thematic_art)
-        except Exception as e:
-            logger.warning(f"Could not composite slide art: {e}")
-
         draw = ImageDraw.Draw(rgba_img, "RGBA")
 
-        cy = int(height * (0.66 if is_shorts else 0.62))
+        cy = int(height * (0.54 if is_shorts else 0.50))
         bw = width - int(width * 0.14)
 
         # Channel watermark
@@ -629,6 +624,7 @@ def assemble_video(
 
 
 def _wrap_text(draw: ImageDraw, text: str, font, max_width: int) -> list[str]:
+    text = html.unescape(text)
     words = text.split()
     lines, current = [], ""
     for w in words:
