@@ -115,5 +115,32 @@
     "video_id": "QOQO4X8yiA4",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/tech_en/20261126_185314_Solid-State_Batteries_Just_Doubled_EV_Driving_Range_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "history",
+    "lang": "te",
+    "title": "Today in History \u2014 Today in History \u2014 Penicillin Discovered #Shorts",
+    "video_id": "EBom_nCIIAA",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/history_te/20261126_235522_Today_in_History_Today_in_History_Penicillin_Discovered_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "kids",
+    "lang": "en",
+    "title": "Samuel and the Star #Shorts",
+    "video_id": "wE1UYd1Tgsc",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261126_235556_Samuel_and_the_Star_Shorts.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "books",
+    "lang": "hi",
+    "title": "\u0915\u093f\u0924\u093e\u092c \u0915\u093e \u0938\u093e\u0930: \u090f\u091f\u0949\u092e\u093f\u0915 \u0939\u0948\u092c\u093f\u091f\u094d\u0938 (\u091c\u0947\u092e\u094d\u0938 \u0915\u094d\u0932\u093f\u092f\u0930) #Shorts",
+    "video_id": "0S5Q5d6yPB0",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261126_235615_Shorts_hi.mp4",
+    "dry_run": false
   }
 ]
