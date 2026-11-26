@@ -14,6 +14,11 @@ from config import (
 from logger import get_logger
 logger = get_logger("engine")
 
+try:
+    from scripts.illustrations import get_thematic_artwork
+except ImportError:
+    from illustrations import get_thematic_artwork
+
 # All 14 categories default to vertical 9:16 Shorts (1080x1920) for maximum viral reach
 SHORTS_CATEGORIES = {
     "devotional", "weather", "news", "facts", "motivational",
@@ -252,6 +257,15 @@ def generate_cinematic_thumbnail(
         d_overlay.line([(0, y), (width, y)], fill=(6, 8, 16, alpha))
 
     combined = Image.alpha_composite(img.convert("RGBA"), overlay)
+
+    # 2. Composite High-Retention Thematic Character / Story Art in Center
+    try:
+        art_cy = int(height * (0.50 if is_shorts else 0.48))
+        thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
+        combined = Image.alpha_composite(combined, thematic_art)
+    except Exception as e:
+        logger.warning(f"Could not composite thematic artwork on thumbnail: {e}")
+
     draw = ImageDraw.Draw(combined, "RGBA")
     cx = width // 2
 
@@ -259,7 +273,7 @@ def generate_cinematic_thumbnail(
     font_brand = get_font(int(width * (0.038 if is_shorts else 0.026)), text="OMNIPULSE DAILY")
     brand_text = "✦ OMNIPULSE DAILY ✦"
     btw = draw.textlength(brand_text, font=font_brand)
-    b_y = int(height * (0.08 if is_shorts else 0.06))
+    b_y = int(height * (0.05 if is_shorts else 0.04))
     draw.rounded_rectangle(
         [cx - btw / 2 - 26, b_y - 10, cx + btw / 2 + 26, b_y + font_brand.size + 14],
         radius=22,
@@ -269,28 +283,40 @@ def generate_cinematic_thumbnail(
     )
     draw.text((cx - btw / 2, b_y), brand_text, fill=accent, font=font_brand)
 
-    # Main Headline
-    font_title = get_font(int(width * (0.068 if is_shorts else 0.054)), text=title)
-    max_w = width - int(width * 0.16)
-    wrapped = _wrap_text(draw, title.strip(), font_title, max_w)
-    wrapped = wrapped[:4]
-    line_h = int(font_title.size * 1.38)
-    total_h = len(wrapped) * line_h
-    start_y = int(height * (0.46 if is_shorts else 0.36)) - total_h // 2
+    # Category Badge Pill
+    cat_badge = f"⚡ {category.upper()} ⚡"
+    font_badge = get_font(int(width * (0.032 if is_shorts else 0.022)), text=cat_badge)
+    cbw = draw.textlength(cat_badge, font=font_badge)
+    badge_y = b_y + font_brand.size + 24
+    draw.rounded_rectangle(
+        [cx - cbw / 2 - 18, badge_y - 6, cx + cbw / 2 + 18, badge_y + font_badge.size + 8],
+        radius=14,
+        fill=(220, 25, 25, 230),
+        outline=(255, 255, 255, 200),
+        width=2
+    )
+    draw.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
 
-    # High-impact thumbnail text floating directly over cinematic photography — NO dark card box
+    # Main Headline (Big, Bold, Punchy at Upper Third)
+    font_title = get_font(int(width * (0.068 if is_shorts else 0.054)), text=title)
+    max_w = width - int(width * 0.14)
+    wrapped = _wrap_text(draw, title.strip(), font_title, max_w)
+    wrapped = wrapped[:3]
+    line_h = int(font_title.size * 1.34)
+    start_y = badge_y + font_badge.size + 24
+
+    # High-impact thumbnail text floating over cinematic background
     for i, wl in enumerate(wrapped):
         dw = draw.textlength(wl, font=font_title)
         tx = cx - dw / 2
         ty = start_y + i * line_h
         fill_col = (255, 235, 70, 255) if i == 0 else (255, 255, 255, 255)
-        # Bold stroke outline ensures 100% legibility on any background without blocking the image
         draw.text(
             (tx, ty), wl,
             fill=fill_col,
             font=font_title,
-            stroke_width=5,
-            stroke_fill=(0, 0, 0, 245)
+            stroke_width=6,
+            stroke_fill=(0, 0, 0, 250)
         )
 
     # Bottom CTA Badge
@@ -375,6 +401,15 @@ def generate_frame_sequence(
     if title:
         hook_bg = bg_pool[0].copy() if bg_pool else Image.new("RGB", (width, height), color=palette["bg"])
         rgba_hook = _draw_gradient_overlay(hook_bg)
+
+        # Thematic Character / Visual Art in center
+        try:
+            art_cy = int(height * (0.60 if is_shorts else 0.55))
+            thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
+            rgba_hook = Image.alpha_composite(rgba_hook, thematic_art)
+        except Exception as e:
+            logger.warning(f"Could not composite intro art: {e}")
+
         draw_hook = ImageDraw.Draw(rgba_hook, "RGBA")
 
         # Top Channel Crest
@@ -388,19 +423,18 @@ def generate_frame_sequence(
         cat_badge = f"⚡ {category.upper()} ⚡"
         font_badge = get_font(int(width * (0.034 if is_shorts else 0.024)), text=cat_badge)
         cbw = draw_hook.textlength(cat_badge, font=font_badge)
-        badge_y = header_y + font_brand.size + 36
+        badge_y = header_y + font_brand.size + 30
         draw_hook.rounded_rectangle(
             [cx - cbw / 2 - 18, badge_y - 6, cx + cbw / 2 + 18, badge_y + font_badge.size + 10],
             radius=16, fill=(220, 25, 25, 230), outline=(255, 255, 255, 200), width=2
         )
         draw_hook.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
 
-        # Big Title Hook
+        # Big Title Hook (Upper third above character)
         font_hook = get_font(int(width * (0.066 if is_shorts else 0.052)), text=title)
         hook_lines = _wrap_text(draw_hook, title.strip(), font_hook, width - int(width * 0.14))[:3]
-        h_line_h = int(font_hook.size * 1.38)
-        h_total_h = len(hook_lines) * h_line_h
-        h_start_y = int(height * (0.50 if is_shorts else 0.45)) - h_total_h // 2
+        h_line_h = int(font_hook.size * 1.36)
+        h_start_y = badge_y + font_badge.size + 24
 
         for k, hl in enumerate(hook_lines):
             hl_w = draw_hook.textlength(hl, font=font_hook)
@@ -409,7 +443,7 @@ def generate_frame_sequence(
                 hl,
                 fill=(255, 235, 50, 255) if k == 0 else (255, 255, 255, 255),
                 font=font_hook,
-                stroke_width=5,
+                stroke_width=6,
                 stroke_fill=(0, 0, 0, 245)
             )
 
@@ -429,9 +463,18 @@ def generate_frame_sequence(
             base_bg = Image.new("RGB", (width, height), color=palette["bg"])
 
         rgba_img = _draw_gradient_overlay(base_bg)
+
+        # Thematic Character / Story Art in upper-mid
+        try:
+            art_cy = int(height * (0.36 if is_shorts else 0.32))
+            thematic_art = get_thematic_artwork(category, width, height, target_cy=art_cy)
+            rgba_img = Image.alpha_composite(rgba_img, thematic_art)
+        except Exception as e:
+            logger.warning(f"Could not composite slide art: {e}")
+
         draw = ImageDraw.Draw(rgba_img, "RGBA")
 
-        cy = int(height * (0.58 if is_shorts else 0.55))
+        cy = int(height * (0.66 if is_shorts else 0.62))
         bw = width - int(width * 0.14)
 
         # Channel watermark
