@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Add scripts dir to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import OUTPUT_DIR, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES, ENABLED_LANGUAGES
+from config import OUTPUT_DIR, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES, ENABLED_LANGUAGES, FFPROBE
 from logger import get_logger
 from engine import generate_title_card, generate_frame_sequence, assemble_video, get_font
 from audio import run_audio_sync
@@ -147,6 +147,21 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         tags.extend(["shorts", "viral", "trending", "youtubeshorts", "daily", "foryou"])
         description = f"{description}\n\n#Shorts #Viral #Trending #YouTubeShorts #DailyKnowledge"
 
+    # QA Gate 1: Content & Metadata Validation
+    from validator import (
+        validate_content_metadata,
+        validate_audio,
+        validate_frame,
+        validate_thumbnail,
+        validate_video_file
+    )
+    content["title"] = title
+    meta_ok, meta_msg = validate_content_metadata(content, lang=lang)
+    if not meta_ok:
+        logger.error(f"[QA REJECTED] Metadata validation failed: {meta_msg}")
+        return None
+    logger.info(f"✓ [QA PASSED] Metadata: {meta_msg}")
+
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = _slug(title)
     if lang != "en":
@@ -170,6 +185,16 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.error(f"Frame generation failed: {e}")
         return None
 
+    # QA Gate 2: Frames Inspection
+    exp_w = 1080 if is_shorts else 1280
+    exp_h = 1920 if is_shorts else 720
+    for idx, f_path in enumerate(frames):
+        f_ok, f_msg = validate_frame(f_path, exp_w, exp_h)
+        if not f_ok:
+            logger.error(f"[QA REJECTED] Frame {idx} failed: {f_msg}")
+            return None
+    logger.info(f"✓ [QA PASSED] All {len(frames)} frames verified (dimensions & visual density).")
+
     # Step 2: Generate voiceover
     try:
         run_audio_sync(script, voice=voice, rate=rate, output_path=audio_path)
@@ -177,12 +202,26 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.error(f"Audio generation failed: {e}")
         return None
 
+    # QA Gate 3: Audio Stream Inspection
+    a_ok, a_msg = validate_audio(audio_path, ffprobe_bin=FFPROBE)
+    if not a_ok:
+        logger.error(f"[QA REJECTED] Audio check failed: {a_msg}")
+        return None
+    logger.info(f"✓ [QA PASSED] Audio: {a_msg}")
+
     # Step 3: Assemble video
     try:
         assemble_video(frames, audio_path, output_path)
     except Exception as e:
         logger.error(f"Video assembly failed: {e}")
         return None
+
+    # QA Gate 4: Final Video Render Inspection
+    v_ok, v_msg = validate_video_file(output_path, ffprobe_bin=FFPROBE, is_shorts=is_shorts)
+    if not v_ok:
+        logger.error(f"[QA REJECTED] Final video verification failed: {v_msg}")
+        return None
+    logger.info(f"✓ [QA PASSED] Final video: {v_msg}")
 
     # Step 4: Create high-converting cinematic thumbnail
     try:
@@ -199,6 +238,15 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     except Exception as e:
         logger.warning(f"Thumbnail creation fallback: {e}")
         thumbnail_path = None
+
+    # QA Gate 5: Thumbnail Inspection
+    if thumbnail_path:
+        t_ok, t_msg = validate_thumbnail(thumbnail_path, is_shorts=is_shorts)
+        if not t_ok:
+            logger.warning(f"[QA WARNING] Thumbnail check failed ({t_msg}). Proceeding without custom thumbnail.")
+            thumbnail_path = None
+        else:
+            logger.info(f"✓ [QA PASSED] Thumbnail: {t_msg}")
 
     # Step 5: Upload
     video_id = None
