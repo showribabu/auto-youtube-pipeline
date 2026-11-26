@@ -34,5 +34,14 @@
     "video_id": "NrTpjouwx_Y",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/devotional_te/20261125_191337_Shorts_te.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "weather",
+    "lang": "te",
+    "title": "[\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41] Weather Update: Bengaluru \u2014 27\u00b0C (Patchy rain nearby)",
+    "video_id": "wvbBKFtVVRg",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/weather_te/20261126_092030_Weather_Update_Bengaluru_27C_Patchy_rain_nearby_te.mp4",
+    "dry_run": false
   }
 ]
