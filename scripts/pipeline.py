@@ -205,6 +205,20 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
             video_id = upload_video(output_path, title, description, tags)
             if video_id and video_id != "QUOTA_EXCEEDED" and thumbnail_path:
                 set_thumbnail(video_id, thumbnail_path)
+            
+            # Send immediate notification on successful upload
+            if video_id and video_id != "QUOTA_EXCEEDED":
+                try:
+                    from notify import notify_upload_success
+                    notify_upload_success(
+                        video_title=title,
+                        video_id=video_id,
+                        category=category,
+                        lang=lang,
+                        is_shorts=is_shorts
+                    )
+                except Exception as ne:
+                    logger.warning(f"Notification error: {ne}")
         except Exception as e:
             logger.error(f"Upload failed: {e}")
     else:
@@ -236,6 +250,47 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         "thumbnail": thumbnail_path,
         "dry_run": dry_run,
     }
+
+
+def run_scheduled_slot(dry_run: bool = False, slot: str | None = None) -> list[dict]:
+    """
+    Intelligently select 2-3 videos for the current time slot.
+    Morning (~02:15 UTC / 07:45 IST): Devotional (Telugu), Weather (Telugu), Motivation (Hindi)
+    Midday (~07:20 UTC / 12:50 IST): Facts (Telugu), Cooking (Hindi), Health (English)
+    Afternoon (~12:15 UTC / 17:45 IST): Tech (English), News (Telugu), Crypto (English)
+    Evening (~15:20 UTC / 20:50 IST): History (Telugu), Kids (English), Books (Hindi)
+    """
+    utc_hour = datetime.utcnow().hour
+    if slot is None:
+        if 0 <= utc_hour < 5:
+            slot = "morning"
+        elif 5 <= utc_hour < 10:
+            slot = "midday"
+        elif 10 <= utc_hour < 14:
+            slot = "afternoon"
+        else:
+            slot = "evening"
+
+    SCHEDULE_PLANS = {
+        "morning":   [("devotional", "te"), ("weather", "te"), ("motivational", "hi")],
+        "midday":    [("facts", "te"), ("cooking", "hi"), ("health", "en")],
+        "afternoon": [("tech", "en"), ("news", "te"), ("crypto", "en")],
+        "evening":   [("history", "te"), ("kids", "en"), ("books", "hi")],
+    }
+
+    plan = SCHEDULE_PLANS.get(slot, SCHEDULE_PLANS["morning"])
+    logger.info(f"━━━ Running Scheduled Slot: {slot.upper()} (Plan: {plan}) ━━━")
+    results = []
+    for cat, lang in plan:
+        res = run_category(cat, dry_run=dry_run, lang=lang)
+        if res:
+            results.append(res)
+            if res.get("video_id") == "QUOTA_EXCEEDED":
+                logger.warning("YouTube 24-hr limit reached. Halting slot uploads.")
+                break
+    published = sum(1 for r in results if r.get("video_id") and r["video_id"] != "QUOTA_EXCEEDED")
+    logger.info(f"━━━ Slot {slot.upper()} Finished: {published} video(s) published ━━━")
+    return results
 
 
 def run_all_categories(dry_run: bool = False):
@@ -271,6 +326,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Auto YouTube Pipeline")
     parser.add_argument("--category", type=str, help="Run single category")
     parser.add_argument("--lang", type=str, default="en", help="Language code (en, hi, te)")
+    parser.add_argument("--auto-slot", action="store_true", help="Run time-of-day category slot (2-3 videos)")
+    parser.add_argument("--slot", type=str, choices=["morning", "midday", "afternoon", "evening"], help="Run specific broadcast slot")
     parser.add_argument("--run-all", action="store_true", help="Run all categories × all languages")
     parser.add_argument("--scheduler", action="store_true", help="Start cron scheduler")
     parser.add_argument("--test", action="store_true", help="Dry run (no uploads)")
@@ -280,6 +337,12 @@ if __name__ == "__main__":
         r = run_category(args.category, dry_run=args.test, lang=args.lang)
         print(f"Result: {r}" if r else "No video generated")
         if not args.test and (not r or not r.get("video_id") or r.get("video_id") == "QUOTA_EXCEEDED"):
+            sys.exit(1)
+    elif args.auto_slot or args.slot:
+        results = run_scheduled_slot(dry_run=args.test, slot=args.slot)
+        published = sum(1 for r in results if r.get("video_id") and r["video_id"] != "QUOTA_EXCEEDED")
+        print(f"Slot run completed: {len(results)} generated, {published} published")
+        if not args.test and published == 0:
             sys.exit(1)
     elif args.run_all:
         results = run_all_categories(dry_run=args.test)

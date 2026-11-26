@@ -2,24 +2,29 @@ name: Daily YouTube Pipeline
 
 on:
   schedule:
-    # 4 Automated Daily Broadcasts (UTC):
-    - cron: '0 2 * * *'   # 07:30 AM IST (Morning: Devotional, News, Weather, Health & Motivation)
-    - cron: '0 7 * * *'   # 12:30 PM IST (Midday: Facts, Recipes, Language Learning)
-    - cron: '0 12 * * *'  # 05:30 PM IST (Afternoon: Tech/AI, Crypto, Books, Gaming)
-    - cron: '0 15 * * *'  # 08:30 PM IST (Evening: Kids Stories, History, Reflections)
+    # 4 Automated Daily Broadcasts with staggered non-zero minutes (UTC):
+    - cron: '15 2 * * *'   # 07:45 AM IST (Morning: Devotional, Weather, Motivation)
+    - cron: '20 7 * * *'   # 12:50 PM IST (Midday: Facts, Cooking, Health)
+    - cron: '15 12 * * *'  # 05:45 PM IST (Afternoon: Tech, News, Crypto)
+    - cron: '20 15 * * *'  # 08:50 PM IST (Evening: History, Kids, Books)
   workflow_dispatch:      # Instant trigger from GitHub UI / API
     inputs:
       category:
-        description: 'Specific category to run (or leave empty for all)'
+        description: 'Specific category to run (or leave empty for auto-slot)'
         required: false
         default: ''
       lang:
-        description: 'Specific language (en, hi, te) or leave empty for all'
+        description: 'Specific language (en, hi, te) or leave empty for default'
         required: false
         default: ''
+      run_all:
+        description: 'Run ALL 14 categories (true/false)'
+        required: false
+        default: 'false'
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   pipeline-run:
@@ -60,6 +65,8 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTIFY_EMAIL: "rajubai6419@gmail.com"
           MAX_VIDEOS_PER_DAY: 100
         run: |
           if [ -n "${{ github.event.inputs.category }}" ]; then
@@ -68,8 +75,10 @@ jobs:
               LANG_FLAG="--lang ${{ github.event.inputs.lang }}"
             fi
             python scripts/pipeline.py --category ${{ github.event.inputs.category }} $LANG_FLAG
-          else
+          elif [ "${{ github.event.inputs.run_all }}" = "true" ]; then
             python scripts/pipeline.py --run-all
+          else
+            python scripts/pipeline.py --auto-slot
           fi
 
       - name: Commit Updated Upload Ledger
