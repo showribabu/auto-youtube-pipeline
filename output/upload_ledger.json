@@ -106,5 +106,14 @@
     "video_id": "dINApeZUC-M",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/tech_en/20261126_183104_Daily_Tech_News_Nov_26_2026_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "tech",
+    "lang": "en",
+    "title": "Solid-State Batteries Just Doubled EV Driving Range #Shorts",
+    "video_id": "QOQO4X8yiA4",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/tech_en/20261126_185314_Solid-State_Batteries_Just_Doubled_EV_Driving_Range_Shorts.mp4",
+    "dry_run": false
   }
 ]
