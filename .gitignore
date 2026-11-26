@@ -17,3 +17,5 @@ weather_test.mp3
 *.db
 .DS_Store
 node_modules/
+deploy/trigger_cloud.bat
+deploy/register_cloud_triggers.bat
