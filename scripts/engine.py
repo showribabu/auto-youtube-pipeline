@@ -280,25 +280,29 @@ def generate_cinematic_thumbnail(
 
     # Brand header pill
     font_brand = get_font(int(width * (0.038 if is_shorts else 0.026)), text="OMNIPULSE DAILY")
-    brand_text = "✦ OMNIPULSE DAILY ✦"
+    brand_text = "OMNIPULSE DAILY"
     btw = draw.textlength(brand_text, font=font_brand)
     b_y = int(height * (0.05 if is_shorts else 0.04))
     draw.rounded_rectangle(
-        [cx - btw / 2 - 26, b_y - 10, cx + btw / 2 + 26, b_y + font_brand.size + 14],
+        [cx - btw / 2 - 32, b_y - 10, cx + btw / 2 + 32, b_y + font_brand.size + 14],
         radius=22,
         fill=(12, 14, 24, 220),
         outline=(*accent, 255),
         width=3
     )
+    # Left and right golden geometric diamonds (vector, zero font box risk)
+    mid_brand_y = b_y + font_brand.size // 2
+    draw.polygon([(cx - btw / 2 - 20, mid_brand_y), (cx - btw / 2 - 14, mid_brand_y - 6), (cx - btw / 2 - 8, mid_brand_y), (cx - btw / 2 - 14, mid_brand_y + 6)], fill=accent)
+    draw.polygon([(cx + btw / 2 + 8, mid_brand_y), (cx + btw / 2 + 14, mid_brand_y - 6), (cx + btw / 2 + 20, mid_brand_y), (cx + btw / 2 + 14, mid_brand_y + 6)], fill=accent)
     draw.text((cx - btw / 2, b_y), brand_text, fill=accent, font=font_brand)
 
     # Category Badge Pill
-    cat_badge = f"⚡ {category.upper()} ⚡"
+    cat_badge = category.upper()
     font_badge = get_font(int(width * (0.032 if is_shorts else 0.022)), text=cat_badge)
     cbw = draw.textlength(cat_badge, font=font_badge)
     badge_y = b_y + font_brand.size + 24
     draw.rounded_rectangle(
-        [cx - cbw / 2 - 18, badge_y - 6, cx + cbw / 2 + 18, badge_y + font_badge.size + 8],
+        [cx - cbw / 2 - 22, badge_y - 6, cx + cbw / 2 + 22, badge_y + font_badge.size + 8],
         radius=14,
         fill=(220, 25, 25, 230),
         outline=(255, 255, 255, 200),
@@ -332,7 +336,7 @@ def generate_cinematic_thumbnail(
 
     # Bottom CTA Badge
     font_cta = get_font(int(width * (0.040 if is_shorts else 0.028)), text="WATCH NOW #SHORTS")
-    cta_text = "🔴 WATCH NOW #SHORTS" if is_shorts else "▶ WATCH FULL VIDEO"
+    cta_text = "WATCH NOW #SHORTS" if is_shorts else "WATCH FULL VIDEO"
     ctw = draw.textlength(cta_text, font=font_cta)
     cta_y = int(height * (0.84 if is_shorts else 0.82))
     draw.rounded_rectangle(
@@ -397,8 +401,9 @@ def generate_frame_sequence(
     ts = int(datetime.now().timestamp())
     cx = width // 2
     header_y = 110 if is_shorts else 40
-    brand_text = "✦ OMNIPULSE DAILY ✦"
+    brand_text = "OMNIPULSE DAILY"
     btw = font_brand.size * 10
+    mid_brand_y = header_y + font_brand.size // 2
 
     # Fetch up to 3 distinct real background images per video and cycle smoothly
     bg_pool = []
@@ -431,12 +436,12 @@ def generate_frame_sequence(
         draw_hook.text((cx - btw / 2, header_y), brand_text, fill=palette["accent"], font=font_brand)
 
         # Category Badge Pill
-        cat_badge = f"⚡ {category.upper()} ⚡"
+        cat_badge = category.upper()
         font_badge = get_font(int(width * (0.034 if is_shorts else 0.024)), text=cat_badge)
         cbw = draw_hook.textlength(cat_badge, font=font_badge)
         badge_y = header_y + font_brand.size + 30
         draw_hook.rounded_rectangle(
-            [cx - cbw / 2 - 18, badge_y - 6, cx + cbw / 2 + 18, badge_y + font_badge.size + 10],
+            [cx - cbw / 2 - 20, badge_y - 6, cx + cbw / 2 + 20, badge_y + font_badge.size + 10],
             radius=16, fill=(220, 25, 25, 230), outline=(255, 255, 255, 200), width=2
         )
         draw_hook.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
