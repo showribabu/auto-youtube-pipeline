@@ -469,10 +469,7 @@ def generate_frame_sequence(
                 stroke_fill=(0, 0, 0, 245)
             )
 
-        # Bottom Swipe / Watch Hook
-        cta_y = height - (210 if is_shorts else 95)
-        _draw_subscribe_cta(draw_hook, cx, cta_y, font_cta, is_shorts)
-
+        # Bottom safe zone respected (no fake subscribe button collision with native YouTube UI)
         frame_0_path = os.path.join(out_dir, f"frame_{ts:06d}_000_intro.png")
         rgba_hook.convert("RGB").save(frame_0_path, "PNG")
         frames.append(frame_0_path)
@@ -511,10 +508,7 @@ def generate_frame_sequence(
             ty = y_start + j * line_h
             _draw_kinetic_line(draw, wl, font_line, cx, ty)
 
-        # YouTube Subscribe + Bell CTA
-        cta_y = height - (210 if is_shorts else 95)
-        _draw_subscribe_cta(draw, cx, cta_y, font_cta, is_shorts)
-
+        # Bottom safe zone kept 100% clean for YouTube native UI
         frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i+1:03d}.png")
         rgba_img.convert("RGB").save(frame_path, "PNG")
         frames.append(frame_path)
