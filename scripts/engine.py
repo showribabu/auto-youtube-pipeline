@@ -278,28 +278,20 @@ def generate_cinematic_thumbnail(
     total_h = len(wrapped) * line_h
     start_y = int(height * (0.46 if is_shorts else 0.36)) - total_h // 2
 
-    # Card backdrop behind title
-    pad_x = 36
-    pad_y = 30
-    c_x0 = int(width * 0.06)
-    c_x1 = width - int(width * 0.06)
-    c_y0 = start_y - pad_y
-    c_y1 = start_y + total_h + pad_y
-    draw.rounded_rectangle(
-        [c_x0, c_y0, c_x1, c_y1],
-        radius=28,
-        fill=(8, 10, 18, 210),
-        outline=(*accent, 220),
-        width=3
-    )
-
+    # High-impact thumbnail text floating directly over cinematic photography — NO dark card box
     for i, wl in enumerate(wrapped):
         dw = draw.textlength(wl, font=font_title)
         tx = cx - dw / 2
         ty = start_y + i * line_h
-        draw.text((tx + 3, ty + 4), wl, fill=(0, 0, 0, 240), font=font_title)
         fill_col = (255, 235, 70, 255) if i == 0 else (255, 255, 255, 255)
-        draw.text((tx, ty), wl, fill=fill_col, font=font_title)
+        # Bold stroke outline ensures 100% legibility on any background without blocking the image
+        draw.text(
+            (tx, ty), wl,
+            fill=fill_col,
+            font=font_title,
+            stroke_width=5,
+            stroke_fill=(0, 0, 0, 245)
+        )
 
     # Bottom CTA Badge
     font_cta = get_font(int(width * (0.040 if is_shorts else 0.028)), text="WATCH NOW #SHORTS")
@@ -380,36 +372,26 @@ def generate_frame_sequence(
         )
         draw.text((cx - btw / 2, header_y), brand_text, fill=palette["accent"], font=font_brand)
 
-        # Wrap text and compute glassmorphic caption card dimensions
-        wrap_lines = _wrap_text(draw, line.strip(), font_big, bw - 40)
-        line_h = int(font_big.size * 1.42)
+        # Clean modern typography floating directly over the video — NO heavy opaque boxes
+        font_line = get_font(int(width * (0.058 if is_shorts else 0.048)), text=line)
+        wrap_lines = _wrap_text(draw, line.strip(), font_line, bw)
+        line_h = int(font_line.size * 1.40)
         total_h = len(wrap_lines) * line_h
         y_start = cy - total_h // 2
 
-        card_pad_x = 36
-        card_pad_y = 32
-        card_x0 = int(width * 0.07) - 10
-        card_x1 = width - int(width * 0.07) + 10
-        card_y0 = y_start - card_pad_y
-        card_y1 = y_start + total_h + card_pad_y
-
-        # Semi-transparent glassmorphic card behind text
-        draw.rounded_rectangle(
-            [card_x0, card_y0, card_x1, card_y1],
-            radius=28,
-            fill=(10, 12, 22, 185),
-            outline=(*palette["accent"], 140),
-            width=3,
-        )
-
-        # Draw crisp shadowed typography
+        # Draw crisp typography with thick black stroke outline (clean modern Shorts style)
         for j, wl in enumerate(wrap_lines):
-            dw = draw.textlength(wl, font=font_big)
+            dw = draw.textlength(wl, font=font_line)
             tx = cx - dw / 2
             ty = y_start + j * line_h
-            # Subtle drop shadow
-            draw.text((tx + 2, ty + 3), wl, fill=(0, 0, 0, 200), font=font_big)
-            draw.text((tx, ty), wl, fill=(255, 255, 255, 255), font=font_big)
+            # Thick black outline for 100% readability on any background
+            draw.text(
+                (tx, ty), wl,
+                fill=(255, 255, 255, 255),
+                font=font_line,
+                stroke_width=4,
+                stroke_fill=(0, 0, 0, 240)
+            )
 
         # YouTube Subscribe + Bell Notification CTA
         cta_y = height - (210 if is_shorts else 95)

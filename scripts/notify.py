@@ -72,7 +72,8 @@ def send_github_email_notification(title: str, body_markdown: str) -> bool:
 
     payload = {
         "title": title,
-        "body": body_markdown,
+        "body": f"cc: @{REPO_OWNER}\n\n{body_markdown}",
+        "assignees": [REPO_OWNER],
         "labels": ["upload-confirmation", "automated-notification"]
     }
 
