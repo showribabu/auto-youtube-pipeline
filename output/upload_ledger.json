@@ -52,5 +52,32 @@
     "video_id": "OqsTiW2vbkY",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/facts_te/20261126_145944_Mind-Blowing_Fact_The_Internets_First_Message_Shorts_te.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "history",
+    "lang": "te",
+    "title": "Today in History \u2014 Today in History \u2014 Penicillin Discovered #Shorts",
+    "video_id": "dxHihTb0XvE",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/history_te/20261126_152932_Today_in_History_Today_in_History_Penicillin_Discovered_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "kids",
+    "lang": "en",
+    "title": "Samuel and the Star #Shorts",
+    "video_id": "WInWzb8pUG4",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261126_153010_Samuel_and_the_Star_Shorts.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "books",
+    "lang": "hi",
+    "title": "Book Summary: The Power of Now by Eckhart Tolle #Shorts",
+    "video_id": "juInIgObAH0",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261126_153028_Book_Summary_The_Power_of_Now_by_Eckhart_Tolle_Shorts_hi.mp4",
+    "dry_run": false
   }
 ]
