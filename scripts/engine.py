@@ -314,12 +314,35 @@ def generate_cinematic_thumbnail(
     return out_file
 
 
+def _draw_kinetic_line(draw: ImageDraw.ImageDraw, line: str, font, cx: int, ty: int):
+    """Draw caption line with first 1-2 words in bright golden-yellow highlight, rest in white."""
+    words = line.split(" ")
+    if len(words) <= 1:
+        dw = draw.textlength(line, font=font)
+        draw.text((cx - dw / 2, ty), line, fill=(255, 255, 255, 255), font=font, stroke_width=4, stroke_fill=(0, 0, 0, 240))
+        return
+
+    highlight_count = min(2, len(words) // 2) or 1
+    h_text = " ".join(words[:highlight_count]) + " "
+    rest_text = " ".join(words[highlight_count:])
+
+    total_w = draw.textlength(line, font=font)
+    hw = draw.textlength(h_text, font=font)
+
+    x0 = cx - total_w / 2
+    # Draw highlighted word in vibrant gold
+    draw.text((x0, ty), h_text, fill=(255, 225, 45, 255), font=font, stroke_width=4, stroke_fill=(0, 0, 0, 240))
+    # Draw rest in pure white
+    draw.text((x0 + hw, ty), rest_text, fill=(255, 255, 255, 255), font=font, stroke_width=4, stroke_fill=(0, 0, 0, 240))
+
+
 def generate_frame_sequence(
     script_lines: list[str],
     category: str,
     duration_per_line: float = 4.0,
     output_dir: str | None = None,
     is_shorts: bool | None = None,
+    title: str = "",
 ) -> list[str]:
     out_dir = output_dir or CACHE_DIR
     os.makedirs(out_dir, exist_ok=True)
@@ -332,11 +355,13 @@ def generate_frame_sequence(
     width = 1080 if is_shorts else OUTPUT_WIDTH
     height = 1920 if is_shorts else OUTPUT_HEIGHT
 
-    full_sample_text = " ".join(script_lines)
-    font_big = get_font(int(width * (0.056 if is_shorts else 0.048)), text=full_sample_text)
     font_brand = get_font(int(width * (0.030 if is_shorts else 0.022)), text="OMNIPULSE DAILY")
     font_cta = get_font(int(width * (0.026 if is_shorts else 0.020)), text="SUBSCRIBE")
     ts = int(datetime.now().timestamp())
+    cx = width // 2
+    header_y = 110 if is_shorts else 40
+    brand_text = "✦ OMNIPULSE DAILY ✦"
+    btw = font_brand.size * 10
 
     # Fetch up to 3 distinct real background images per video and cycle smoothly
     bg_pool = []
@@ -346,23 +371,70 @@ def generate_frame_sequence(
         if bg is not None:
             bg_pool.append(bg)
 
+    # ─── Frame 0: Cinematic Intro Hook Slide ──────────────────
+    if title:
+        hook_bg = bg_pool[0].copy() if bg_pool else Image.new("RGB", (width, height), color=palette["bg"])
+        rgba_hook = _draw_gradient_overlay(hook_bg)
+        draw_hook = ImageDraw.Draw(rgba_hook, "RGBA")
+
+        # Top Channel Crest
+        draw_hook.rounded_rectangle(
+            [cx - btw / 2 - 24, header_y - 10, cx + btw / 2 + 24, header_y + font_brand.size + 14],
+            radius=22, fill=(12, 14, 24, 220), outline=(*palette["accent"], 255), width=3
+        )
+        draw_hook.text((cx - btw / 2, header_y), brand_text, fill=palette["accent"], font=font_brand)
+
+        # Category Badge Pill
+        cat_badge = f"⚡ {category.upper()} ⚡"
+        font_badge = get_font(int(width * (0.034 if is_shorts else 0.024)), text=cat_badge)
+        cbw = draw_hook.textlength(cat_badge, font=font_badge)
+        badge_y = header_y + font_brand.size + 36
+        draw_hook.rounded_rectangle(
+            [cx - cbw / 2 - 18, badge_y - 6, cx + cbw / 2 + 18, badge_y + font_badge.size + 10],
+            radius=16, fill=(220, 25, 25, 230), outline=(255, 255, 255, 200), width=2
+        )
+        draw_hook.text((cx - cbw / 2, badge_y), cat_badge, fill=(255, 255, 255, 255), font=font_badge)
+
+        # Big Title Hook
+        font_hook = get_font(int(width * (0.066 if is_shorts else 0.052)), text=title)
+        hook_lines = _wrap_text(draw_hook, title.strip(), font_hook, width - int(width * 0.14))[:3]
+        h_line_h = int(font_hook.size * 1.38)
+        h_total_h = len(hook_lines) * h_line_h
+        h_start_y = int(height * (0.50 if is_shorts else 0.45)) - h_total_h // 2
+
+        for k, hl in enumerate(hook_lines):
+            hl_w = draw_hook.textlength(hl, font=font_hook)
+            draw_hook.text(
+                (cx - hl_w / 2, h_start_y + k * h_line_h),
+                hl,
+                fill=(255, 235, 50, 255) if k == 0 else (255, 255, 255, 255),
+                font=font_hook,
+                stroke_width=5,
+                stroke_fill=(0, 0, 0, 245)
+            )
+
+        # Bottom Swipe / Watch Hook
+        cta_y = height - (210 if is_shorts else 95)
+        _draw_subscribe_cta(draw_hook, cx, cta_y, font_cta, is_shorts)
+
+        frame_0_path = os.path.join(out_dir, f"frame_{ts:06d}_000_intro.png")
+        rgba_hook.convert("RGB").save(frame_0_path, "PNG")
+        frames.append(frame_0_path)
+
+    # ─── Frames 1 to N: Kinetic Narrative Slides ──────────────
     for i, line in enumerate(script_lines):
         if bg_pool:
-            base_bg = bg_pool[i % len(bg_pool)].copy()
+            base_bg = bg_pool[(i + 1) % len(bg_pool)].copy()
         else:
             base_bg = Image.new("RGB", (width, height), color=palette["bg"])
 
         rgba_img = _draw_gradient_overlay(base_bg)
         draw = ImageDraw.Draw(rgba_img, "RGBA")
 
-        cx = width // 2
         cy = int(height * (0.58 if is_shorts else 0.55))
         bw = width - int(width * 0.14)
 
-        # Clean subtle channel header watermark (NO "automated" or bot labels)
-        brand_text = "OMNIPULSE DAILY"
-        btw = draw.textlength(brand_text, font=font_brand)
-        header_y = 110 if is_shorts else 40
+        # Channel watermark
         draw.rounded_rectangle(
             [cx - btw / 2 - 22, header_y - 8, cx + btw / 2 + 22, header_y + font_brand.size + 12],
             radius=20,
@@ -372,32 +444,22 @@ def generate_frame_sequence(
         )
         draw.text((cx - btw / 2, header_y), brand_text, fill=palette["accent"], font=font_brand)
 
-        # Clean modern typography floating directly over the video — NO heavy opaque boxes
+        # Kinetic captions floating over video
         font_line = get_font(int(width * (0.058 if is_shorts else 0.048)), text=line)
         wrap_lines = _wrap_text(draw, line.strip(), font_line, bw)
         line_h = int(font_line.size * 1.40)
         total_h = len(wrap_lines) * line_h
         y_start = cy - total_h // 2
 
-        # Draw crisp typography with thick black stroke outline (clean modern Shorts style)
         for j, wl in enumerate(wrap_lines):
-            dw = draw.textlength(wl, font=font_line)
-            tx = cx - dw / 2
             ty = y_start + j * line_h
-            # Thick black outline for 100% readability on any background
-            draw.text(
-                (tx, ty), wl,
-                fill=(255, 255, 255, 255),
-                font=font_line,
-                stroke_width=4,
-                stroke_fill=(0, 0, 0, 240)
-            )
+            _draw_kinetic_line(draw, wl, font_line, cx, ty)
 
-        # YouTube Subscribe + Bell Notification CTA
+        # YouTube Subscribe + Bell CTA
         cta_y = height - (210 if is_shorts else 95)
         _draw_subscribe_cta(draw, cx, cta_y, font_cta, is_shorts)
 
-        frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i:03d}.png")
+        frame_path = os.path.join(out_dir, f"frame_{ts:06d}_{i+1:03d}.png")
         rgba_img.convert("RGB").save(frame_path, "PNG")
         frames.append(frame_path)
 

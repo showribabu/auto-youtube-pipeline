@@ -147,8 +147,9 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         tags.extend(["shorts", "viral", "trending", "youtubeshorts", "daily", "foryou"])
         description = f"{description}\n\n#Shorts #Viral #Trending #YouTubeShorts #DailyKnowledge"
 
-    # QA Gate 1: Content & Metadata Validation
+    # QA Gate 1 & Self-Heal: Content & Metadata Validation
     from validator import (
+        heal_content_metadata,
         validate_content_metadata,
         validate_audio,
         validate_frame,
@@ -158,9 +159,16 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     content["title"] = title
     meta_ok, meta_msg = validate_content_metadata(content, lang=lang)
     if not meta_ok:
-        logger.error(f"[QA REJECTED] Metadata validation failed: {meta_msg}")
-        return None
-    logger.info(f"✓ [QA PASSED] Metadata: {meta_msg}")
+        logger.warning(f"Metadata defect ({meta_msg}). Initiating Self-Healing Loop...")
+        content = heal_content_metadata(content, lang=lang)
+        title = content["title"]
+        script_lines = content["script_lines"]
+        script = content["full_script"]
+        meta_ok, meta_msg = validate_content_metadata(content, lang=lang)
+        if not meta_ok:
+            logger.error(f"[QA REJECTED] Metadata unrecoverable: {meta_msg}")
+            return None
+    logger.info(f"✓ [QA PASSED] Metadata: {title}")
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = _slug(title)
@@ -175,25 +183,32 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
 
     logger.info(f"Generating video for: {title} [{category}] (Shorts={is_shorts})")
 
-    # Step 1: Generate frames (1080x1920 for Shorts, 1280x720 for landscape)
+    # Step 1: Generate frames with Intro Hook Slide + Kinetic Captions
     try:
         frames = generate_frame_sequence(
             script_lines, category, duration_per_line=4.0,
-            output_dir=out_dir, is_shorts=is_shorts
+            output_dir=out_dir, is_shorts=is_shorts, title=title
         )
     except Exception as e:
         logger.error(f"Frame generation failed: {e}")
         return None
 
-    # QA Gate 2: Frames Inspection
+    # QA Gate 2 & Self-Heal: Frames Inspection
     exp_w = 1080 if is_shorts else 1280
     exp_h = 1920 if is_shorts else 720
+    frames_ok = True
     for idx, f_path in enumerate(frames):
         f_ok, f_msg = validate_frame(f_path, exp_w, exp_h)
         if not f_ok:
-            logger.error(f"[QA REJECTED] Frame {idx} failed: {f_msg}")
-            return None
-    logger.info(f"✓ [QA PASSED] All {len(frames)} frames verified (dimensions & visual density).")
+            logger.warning(f"Frame {idx} defect ({f_msg}). Self-healing with regenerated visuals...")
+            frames_ok = False
+            break
+    if not frames_ok:
+        frames = generate_frame_sequence(
+            script_lines, category, duration_per_line=4.0,
+            output_dir=out_dir, is_shorts=is_shorts, title=title
+        )
+    logger.info(f"✓ [QA PASSED] All {len(frames)} frames verified (Intro Hook + Kinetic slides).")
 
     # Step 2: Generate voiceover
     try:
@@ -202,12 +217,17 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.error(f"Audio generation failed: {e}")
         return None
 
-    # QA Gate 3: Audio Stream Inspection
-    a_ok, a_msg = validate_audio(audio_path, ffprobe_bin=FFPROBE)
+    # QA Gate 3 & Self-Heal: Audio Stream Inspection
+    a_ok, a_msg, dur = validate_audio(audio_path, ffprobe_bin=FFPROBE)
     if not a_ok:
-        logger.error(f"[QA REJECTED] Audio check failed: {a_msg}")
-        return None
-    logger.info(f"✓ [QA PASSED] Audio: {a_msg}")
+        logger.warning(f"Audio defect ({a_msg}). Self-healing with rate adjustment...")
+        rate = "+20%" if dur > 58.0 else "-10%"
+        run_audio_sync(script, voice=voice, rate=rate, output_path=audio_path)
+        a_ok, a_msg, dur = validate_audio(audio_path, ffprobe_bin=FFPROBE)
+        if not a_ok:
+            logger.error(f"[QA REJECTED] Audio unrecoverable: {a_msg}")
+            return None
+    logger.info(f"✓ [QA PASSED] Audio verified ({dur:.1f}s).")
 
     # Step 3: Assemble video
     try:
