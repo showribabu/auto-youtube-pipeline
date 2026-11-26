@@ -43,5 +43,14 @@
     "video_id": "wvbBKFtVVRg",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/weather_te/20261126_092030_Weather_Update_Bengaluru_27C_Patchy_rain_nearby_te.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-26",
+    "category": "facts",
+    "lang": "te",
+    "title": "Mind-Blowing Fact: The Internet's First Message #Shorts",
+    "video_id": "OqsTiW2vbkY",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/facts_te/20261126_145944_Mind-Blowing_Fact_The_Internets_First_Message_Shorts_te.mp4",
+    "dry_run": false
   }
 ]
