@@ -344,43 +344,56 @@ def translate_content(content: dict, lang: str) -> dict:
     voice_role = content.get("voice", "default_female")
     target_voice = get_voice(lang, voice_role)
 
-    # Check for direct translation matches in our translation dictionary
-    matched = None
-    for key, trans_dict in TRANSLATIONS.items():
-        if key.lower() in title.lower():
-            matched = trans_dict.get(lang)
-            break
+    # Check if content is already written in the target language
+    has_indic = False
+    if lang == "te":
+        has_indic = any(0x0C00 <= ord(c) <= 0x0C7F for c in title)
+    elif lang == "hi":
+        has_indic = any(0x0900 <= ord(c) <= 0x097F for c in title)
 
-    if matched:
-        new_title = matched["title"]
-        new_lines = matched["lines"]
-        new_script = " ".join(new_lines)
+    if has_indic:
+        # Already natively formatted in target language
+        new_title = title
+        new_lines = content.get("script_lines", [])
+        new_script = content.get("full_script", " ".join(new_lines))
     else:
-        # Generative / RSS fallback localization
-        lang_info = LANGUAGES.get(lang, LANGUAGES["en"])
-        lang_name = lang_info["name"]
-        lang_tag = lang_info["tag"]
+        # Check for direct translation matches in our translation dictionary
+        matched = None
+        for key, trans_dict in TRANSLATIONS.items():
+            if key.lower() in title.lower():
+                matched = trans_dict.get(lang)
+                break
 
-        if lang == "hi":
-            prefix = "[हिंदी] "
-            closing = f"आज का {cat} अपडेट सुनने के लिए धन्यवाद। चैनल को लाइक और सब्सक्राइब जरूर करें!"
-            new_title = f"{prefix}{title}"
-            new_lines = list(content.get("script_lines", []))
-            if new_lines:
-                new_lines.append(closing)
-            new_script = " ".join(new_lines)
-        elif lang == "te":
-            prefix = "[తెలుగు] "
-            closing = f"నేటి {cat} సమాచారం విన్నందుకు ధన్యవాదాలు. మరిన్ని అప్‌డేట్స్ కోసం లైక్, సబ్‌స్క్రైబ్ చేయండి!"
-            new_title = f"{prefix}{title}"
-            new_lines = list(content.get("script_lines", []))
-            if new_lines:
-                new_lines.append(closing)
+        if matched:
+            new_title = matched["title"]
+            new_lines = matched["lines"]
             new_script = " ".join(new_lines)
         else:
-            new_title = f"[{lang.upper()}] {title}"
-            new_lines = content.get("script_lines", [])
-            new_script = content.get("full_script", "")
+            # Generative / RSS fallback localization
+            lang_info = LANGUAGES.get(lang, LANGUAGES["en"])
+            lang_name = lang_info["name"]
+            lang_tag = lang_info["tag"]
+
+            if lang == "hi":
+                prefix = ""
+                closing = f"आज का {cat} अपडेट सुनने के लिए धन्यवाद। चैनल को लाइक और सब्सक्राइब जरूर करें!"
+                new_title = f"{title}"
+                new_lines = list(content.get("script_lines", []))
+                if new_lines:
+                    new_lines.append(closing)
+                new_script = " ".join(new_lines)
+            elif lang == "te":
+                prefix = ""
+                closing = f"నేటి {cat} సమాచారం విన్నందుకు ధన్యవాదాలు. మరిన్ని అప్‌డేట్స్ కోసం లైక్, సబ్‌స్క్రైబ్ చేయండి!"
+                new_title = f"{title}"
+                new_lines = list(content.get("script_lines", []))
+                if new_lines:
+                    new_lines.append(closing)
+                new_script = " ".join(new_lines)
+            else:
+                new_title = f"{title}"
+                new_lines = content.get("script_lines", [])
+                new_script = content.get("full_script", "")
 
     # Localize tags and description
     lang_info = LANGUAGES.get(lang, LANGUAGES["en"])

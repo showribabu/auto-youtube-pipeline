@@ -113,7 +113,12 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         return None
 
     try:
-        content = gen()
+        import inspect
+        sig = inspect.signature(gen)
+        if "lang" in sig.parameters:
+            content = gen(lang=lang)
+        else:
+            content = gen()
     except Exception as e:
         logger.error(f"Content generation failed for {category}: {e}")
         return None
@@ -179,23 +184,20 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
         logger.error(f"Video assembly failed: {e}")
         return None
 
-    # Step 4: Create thumbnail (matching aspect ratio)
+    # Step 4: Create high-converting cinematic thumbnail
     try:
-        from PIL import Image, ImageDraw
-        tw = 1080 if is_shorts else 1280
-        th = 1920 if is_shorts else 720
-        thumb = Image.new("RGB", (tw, th), color=(25, 25, 45))
-        draw = ImageDraw.Draw(thumb)
-        font = get_font(52 if is_shorts else 48)
-        lines = [title[:55], f"#{category.upper()}"]
-        y = (th // 2) - 80
-        for line in lines:
-            dw = draw.textlength(line, font=font)
-            draw.text(((tw - dw) / 2, y), line, fill=(255, 255, 255), font=font)
-            y += 85
-        thumb.save(thumbnail_path, "JPEG", quality=90)
+        from engine import generate_cinematic_thumbnail
+        first_frame = frames[0] if frames else None
+        generate_cinematic_thumbnail(
+            title=title,
+            category=category,
+            lang=lang,
+            base_bg=first_frame,
+            output_path=thumbnail_path,
+            is_shorts=is_shorts,
+        )
     except Exception as e:
-        logger.warning(f"Thumbnail creation skipped: {e}")
+        logger.warning(f"Thumbnail creation fallback: {e}")
         thumbnail_path = None
 
     # Step 5: Upload

@@ -14,27 +14,29 @@ from config import (
 from logger import get_logger
 logger = get_logger("engine")
 
-# Shorts categories default to vertical 9:16 (1080x1920)
+# All 14 categories default to vertical 9:16 Shorts (1080x1920) for maximum viral reach
 SHORTS_CATEGORIES = {
-    "facts", "motivational", "health", "language", "cooking",
-    "crypto", "tech", "history", "devotional"
+    "devotional", "weather", "news", "facts", "motivational",
+    "health", "language", "books", "cooking", "kids",
+    "tech", "crypto", "history", "gaming"
 }
 
+# High-converting competitor-grade prompts with realistic human presenters, expressive characters & cinematic lighting
 CATEGORY_VISUAL_PROMPTS = {
-    "devotional":   "sacred golden lotus glowing temple diya lamps spiritual warm morning light cinematic",
-    "kids":         "magical enchanted storybook forest cute friendly animals glowing fireflies pixar style",
-    "tech":         "futuristic glowing artificial intelligence holographic neural network sleek dark blue",
-    "crypto":       "glowing golden digital finance blockchain network futuristic trading dark aesthetic",
-    "health":       "serene sunrise morning wellness healthy nature green mountains peaceful sunlight",
-    "history":      "ancient classical architecture golden hour dramatic sky cinematic photography",
-    "cooking":      "delicious gourmet meal plating steam rising warm rustic kitchen food photography",
-    "books":        "cozy aesthetic library open book warm golden desk lamp bokeh background",
-    "facts":        "breathtaking deep space nebula glowing stars earth horizon cosmos cinematic",
-    "motivational": "person standing on mountain summit sunrise golden clouds triumph cinematic",
-    "weather":      "dramatic colorful sky clouds sunbeams landscape atmospheric photography",
-    "news":         "modern metropolitan city skyline twilight aerial photography sleek",
-    "gaming":       "vibrant neon cyberpunk futuristic arena glowing lights ultra detailed",
-    "language":     "classic vintage books calligraphy fountain pen warm aesthetic study desk",
+    "devotional":   "peaceful indian spiritual devotee with folded hands praying glowing temple diya lamps morning sunlight cinematic photography 8k",
+    "weather":      "professional weather presenter standing next to futuristic holographic weather cloud map dramatic lighting cinematic 8k",
+    "news":         "professional television news anchor sitting at high tech studio desk breaking news lighting 8k",
+    "motivational": "triumphant inspiring person on mountain peak arms open towards glorious golden sunrise cinematic photography 8k",
+    "facts":        "curious inquisitive person looking in wonder at glowing cosmic hologram planet secrets of universe cinematic 8k",
+    "health":       "vibrant energetic young person smiling holding fresh organic green smoothie bright sunlit modern kitchen 8k",
+    "cooking":      "passionate smiling chef plating a delicious steaming gourmet masterpiece warm rustic kitchen photography 8k",
+    "tech":         "smart technology innovator interacting with glowing transparent artificial intelligence interface cyber 8k",
+    "crypto":       "confident young digital finance analyst viewing holographic trading candlestick charts futuristic aesthetic 8k",
+    "history":      "ancient majestic royal court with king and scholars golden classical architecture epic cinema still 8k",
+    "kids":         "delightful friendly animated 3d pixar style talking animal character smiling warmly in magical colorful fairytale forest 8k",
+    "books":        "thoughtful person immersed in reading an open leather book in cozy grand wooden library golden bokeh 8k",
+    "gaming":       "enthusiastic young gamer wearing glowing headset celebrating victory futuristic neon esports room 8k",
+    "language":     "warm friendly language tutor holding notebook smiling in modern sunlit creative classroom 8k",
 }
 
 
@@ -188,6 +190,136 @@ def generate_title_card(
     img.save(out, "PNG")
     logger.info(f"Title card saved: {out}")
     return out
+
+
+def generate_cinematic_thumbnail(
+    title: str,
+    category: str,
+    lang: str = "en",
+    base_bg=None,
+    output_path: str | None = None,
+    is_shorts: bool = True
+) -> str:
+    """
+    Generate a high-converting, eye-catching YouTube thumbnail / cover image.
+    Features:
+    - High-contrast topic-matched photographic background with vignette darkening
+    - Glowing top brand crest: ✦ OMNIPULSE DAILY ✦
+    - Glassmorphic card container with category-accented outline
+    - Bold, readable title typography in native Telugu/Hindi/Latin with ZERO box glyphs
+    - Vibrant call-to-action badge: 🔴 WATCH NOW #SHORTS
+    """
+    width = 1080 if is_shorts else 1280
+    height = 1920 if is_shorts else 720
+
+    # 1. Base image
+    img = None
+    if isinstance(base_bg, str) and os.path.exists(base_bg):
+        try:
+            img = Image.open(base_bg).convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
+        except Exception:
+            img = None
+    elif isinstance(base_bg, Image.Image):
+        img = base_bg.copy().resize((width, height), Image.Resampling.LANCZOS)
+
+    if img is None:
+        img = _fetch_background_image(category, width, height, 0)
+    if img is None:
+        palette = _get_category_palette(category)
+        img = Image.new("RGB", (width, height), color=palette["bg"])
+
+    # Enhance vividness
+    img = ImageEnhance.Contrast(img).enhance(1.15)
+    img = ImageEnhance.Color(img).enhance(1.20)
+    palette = _get_category_palette(category)
+    accent = palette.get("accent", (255, 200, 40))
+
+    # Dark gradient overlays for high text contrast
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    d_overlay = ImageDraw.Draw(overlay)
+
+    # Top gradient
+    top_h = int(height * 0.22)
+    for y in range(top_h):
+        alpha = int(180 * (1 - y / top_h))
+        d_overlay.line([(0, y), (width, y)], fill=(8, 10, 18, alpha))
+
+    # Center-bottom dark vignette for title card readability
+    mid_y = int(height * 0.38)
+    for y in range(mid_y, height):
+        progress = (y - mid_y) / (height - mid_y)
+        alpha = int(220 * min(1.0, progress * 1.3))
+        d_overlay.line([(0, y), (width, y)], fill=(6, 8, 16, alpha))
+
+    combined = Image.alpha_composite(img.convert("RGBA"), overlay)
+    draw = ImageDraw.Draw(combined, "RGBA")
+    cx = width // 2
+
+    # Brand header pill
+    font_brand = get_font(int(width * (0.038 if is_shorts else 0.026)), text="OMNIPULSE DAILY")
+    brand_text = "✦ OMNIPULSE DAILY ✦"
+    btw = draw.textlength(brand_text, font=font_brand)
+    b_y = int(height * (0.08 if is_shorts else 0.06))
+    draw.rounded_rectangle(
+        [cx - btw / 2 - 26, b_y - 10, cx + btw / 2 + 26, b_y + font_brand.size + 14],
+        radius=22,
+        fill=(12, 14, 24, 220),
+        outline=(*accent, 255),
+        width=3
+    )
+    draw.text((cx - btw / 2, b_y), brand_text, fill=accent, font=font_brand)
+
+    # Main Headline
+    font_title = get_font(int(width * (0.068 if is_shorts else 0.054)), text=title)
+    max_w = width - int(width * 0.16)
+    wrapped = _wrap_text(draw, title.strip(), font_title, max_w)
+    wrapped = wrapped[:4]
+    line_h = int(font_title.size * 1.38)
+    total_h = len(wrapped) * line_h
+    start_y = int(height * (0.46 if is_shorts else 0.36)) - total_h // 2
+
+    # Card backdrop behind title
+    pad_x = 36
+    pad_y = 30
+    c_x0 = int(width * 0.06)
+    c_x1 = width - int(width * 0.06)
+    c_y0 = start_y - pad_y
+    c_y1 = start_y + total_h + pad_y
+    draw.rounded_rectangle(
+        [c_x0, c_y0, c_x1, c_y1],
+        radius=28,
+        fill=(8, 10, 18, 210),
+        outline=(*accent, 220),
+        width=3
+    )
+
+    for i, wl in enumerate(wrapped):
+        dw = draw.textlength(wl, font=font_title)
+        tx = cx - dw / 2
+        ty = start_y + i * line_h
+        draw.text((tx + 3, ty + 4), wl, fill=(0, 0, 0, 240), font=font_title)
+        fill_col = (255, 235, 70, 255) if i == 0 else (255, 255, 255, 255)
+        draw.text((tx, ty), wl, fill=fill_col, font=font_title)
+
+    # Bottom CTA Badge
+    font_cta = get_font(int(width * (0.040 if is_shorts else 0.028)), text="WATCH NOW #SHORTS")
+    cta_text = "🔴 WATCH NOW #SHORTS" if is_shorts else "▶ WATCH FULL VIDEO"
+    ctw = draw.textlength(cta_text, font=font_cta)
+    cta_y = int(height * (0.84 if is_shorts else 0.82))
+    draw.rounded_rectangle(
+        [cx - ctw / 2 - 30, cta_y - 12, cx + ctw / 2 + 30, cta_y + font_cta.size + 16],
+        radius=25,
+        fill=(225, 25, 25, 240),
+        outline=(255, 255, 255, 220),
+        width=2
+    )
+    draw.text((cx - ctw / 2, cta_y), cta_text, fill=(255, 255, 255, 255), font=font_cta)
+
+    out_file = output_path or os.path.join(CACHE_DIR, f"thumb_{int(datetime.now().timestamp())}.jpg")
+    os.makedirs(os.path.dirname(out_file), exist_ok=True)
+    combined.convert("RGB").save(out_file, "JPEG", quality=95)
+    logger.info(f"✓ High-converting cinematic thumbnail created: {out_file}")
+    return out_file
 
 
 def generate_frame_sequence(
