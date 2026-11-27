@@ -169,5 +169,32 @@
     "video_id": "Ahp5dOLldrc",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/crypto_en/20261127_104852_Daily_Crypto_Update_Nov_27_2026_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "history",
+    "lang": "te",
+    "title": "Today in History \u2014 Today in History \u2014 Moon Landing #Shorts",
+    "video_id": "GHKZIVJxU5Y",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/history_te/20261127_173236_Today_in_History_Today_in_History_Moon_Landing_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "kids",
+    "lang": "en",
+    "title": "The Brave Little Rabbit #Shorts",
+    "video_id": "QolpAyNAsUg",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261127_173316_The_Brave_Little_Rabbit_Shorts.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "books",
+    "lang": "hi",
+    "title": "Book Summary: The Alchemist by Paulo Coelho #Shorts",
+    "video_id": "syped2iYbZ8",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261127_173328_Book_Summary_The_Alchemist_by_Paulo_Coelho_Shorts_hi.mp4",
+    "dry_run": false
   }
 ]
