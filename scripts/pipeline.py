@@ -19,8 +19,6 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import OUTPUT_DIR, MAX_VIDEOS_PER_DAY, RETRY_DELAY, MAX_RETRIES, ENABLED_LANGUAGES, FFPROBE
 from logger import get_logger
-from engine import generate_title_card, generate_frame_sequence, assemble_video, get_font
-from audio import run_audio_sync
 from upload import upload_video, set_thumbnail
 
 logger = get_logger("pipeline")
@@ -73,102 +71,83 @@ def _prune_outputs(max_file_age_days: int = 7) -> None:
 
 
 def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict | None:
-    """Generate a video for one category in a given language and optionally upload it."""
-    import categories.kids as kids_mod
-    import categories.news as news_mod
-    import categories.weather as weather_mod
-    import categories.facts as facts_mod
-    import categories.motivational as motiv_mod
-    import categories.tech as tech_mod
-    import categories.crypto as crypto_mod
-    import categories.health as health_mod
-    import categories.history as history_mod
-    import categories.gaming as gaming_mod
-    import categories.language_learning as lang_mod
-    import categories.books as books_mod
-    import categories.cooking as cooking_mod
-    import categories.devotional as dev_mod
+    """Generate a high-retention video for one category in a given language and upload it."""
+    from content.dedup import load_recent_titles, clean_title
+    from content.vault import get_story, STORY_VAULTS
+    from voice.synthesizer import generate_speech
+    from voice.voices import get_voice
+    from visual.compositor import render_pro_short
+    from qa.validator import validate_all_gates
+    from monetization.affiliates import get_pinned_comment
     from multilang import translate_content
+    from engine import SHORTS_CATEGORIES, generate_cinematic_thumbnail
 
-    generators = {
-        "devotional":     dev_mod.generate_devotional_content,
-        "kids":           kids_mod.generate_kids_content,
-        "news":           news_mod.generate_news_content,
-        "weather":        weather_mod.generate_weather_content,
-        "facts":          facts_mod.generate_fact_content,
-        "motivational":   motiv_mod.generate_motivational_content,
-        "tech":           tech_mod.generate_tech_content,
-        "crypto":         crypto_mod.generate_crypto_content,
-        "health":         health_mod.generate_health_content,
-        "history":        history_mod.generate_history_content,
-        "gaming":         gaming_mod.generate_gaming_content,
-        "language":       lang_mod.generate_language_content,
-        "books":          books_mod.generate_book_content,
-        "cooking":        cooking_mod.generate_cooking_content,
-    }
+    recent_titles = load_recent_titles(LEDGER_PATH, days=60)
 
-    gen = generators.get(category)
-    if not gen:
-        logger.error(f"Unknown category: {category}")
-        return None
+    # 1. Select fresh, high-hook narrative (prioritizing the 100+ topic vault)
+    if category.lower() in STORY_VAULTS:
+        content = get_story(category, recent_titles, lang=lang)
+    else:
+        import categories.kids as kids_mod
+        import categories.news as news_mod
+        import categories.weather as weather_mod
+        import categories.facts as facts_mod
+        import categories.motivational as motiv_mod
+        import categories.tech as tech_mod
+        import categories.crypto as crypto_mod
+        import categories.health as health_mod
+        import categories.history as history_mod
+        import categories.gaming as gaming_mod
+        import categories.language_learning as lang_mod
+        import categories.books as books_mod
+        import categories.cooking as cooking_mod
+        import categories.devotional as dev_mod
 
-    try:
+        generators = {
+            "devotional":     dev_mod.generate_devotional_content,
+            "kids":           kids_mod.generate_kids_content,
+            "news":           news_mod.generate_news_content,
+            "weather":        weather_mod.generate_weather_content,
+            "facts":          facts_mod.generate_fact_content,
+            "motivational":   motiv_mod.generate_motivational_content,
+            "tech":           tech_mod.generate_tech_content,
+            "crypto":         crypto_mod.generate_crypto_content,
+            "health":         health_mod.generate_health_content,
+            "history":        history_mod.generate_history_content,
+            "gaming":         gaming_mod.generate_gaming_content,
+            "language":       lang_mod.generate_language_content,
+            "books":          books_mod.generate_book_content,
+            "cooking":        cooking_mod.generate_cooking_content,
+        }
+        gen = generators.get(category)
+        if not gen:
+            logger.error(f"Unknown category: {category}")
+            return None
         import inspect
         sig = inspect.signature(gen)
-        if "lang" in sig.parameters:
-            content = gen(lang=lang)
-        else:
-            content = gen()
-    except Exception as e:
-        logger.error(f"Content generation failed for {category}: {e}")
-        return None
+        content = gen(lang=lang) if "lang" in sig.parameters else gen()
 
-    # Translate content for non-English languages
-    content = translate_content(content, lang)
-
-    # Import Shorts categories
-    from engine import SHORTS_CATEGORIES
+    # Translate content for non-English languages if needed
+    if lang != "en" and category.lower() not in ["devotional"]:
+        content = translate_content(content, lang)
 
     is_shorts = category in SHORTS_CATEGORIES
+    raw_title = content["title"]
+    title = clean_title(raw_title)
+    if is_shorts and "#Shorts" not in title:
+        title = f"{title[:88]} #Shorts"
 
-    title        = content["title"]
     script       = content["full_script"]
     script_lines = content["script_lines"]
-    voice        = content.get("voice", "default_female")
-    rate         = content.get("rate", "+0%")
     tags         = list(content.get("tags", []))
-    description  = content["description"]
+    description  = content.get("description", "")
+    rate         = content.get("rate", "+0%")
 
-    # Supercharge metadata for Shorts & Viral discoverability
     if is_shorts:
-        if "#Shorts" not in title:
-            # Ensure title has space for #Shorts within 100 char limit
-            title = f"{title[:90]} #Shorts"
         tags.extend(["shorts", "viral", "trending", "youtubeshorts", "daily", "foryou"])
         description = f"{description}\n\n#Shorts #Viral #Trending #YouTubeShorts #DailyKnowledge"
 
-    # QA Gate 1 & Self-Heal: Content & Metadata Validation
-    from validator import (
-        heal_content_metadata,
-        validate_content_metadata,
-        validate_audio,
-        validate_frame,
-        validate_thumbnail,
-        validate_video_file
-    )
-    content["title"] = title
-    meta_ok, meta_msg = validate_content_metadata(content, lang=lang)
-    if not meta_ok:
-        logger.warning(f"Metadata defect ({meta_msg}). Initiating Self-Healing Loop...")
-        content = heal_content_metadata(content, lang=lang)
-        title = content["title"]
-        script_lines = content["script_lines"]
-        script = content["full_script"]
-        meta_ok, meta_msg = validate_content_metadata(content, lang=lang)
-        if not meta_ok:
-            logger.error(f"[QA REJECTED] Metadata unrecoverable: {meta_msg}")
-            return None
-    logger.info(f"✓ [QA PASSED] Metadata: {title}")
+    selected_voice = get_voice(lang=lang)
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_title = _slug(title)
@@ -178,106 +157,81 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     os.makedirs(out_dir, exist_ok=True)
 
     output_path     = os.path.join(out_dir, f"{ts_str}_{safe_title}.mp4")
-    audio_path      = os.path.join(out_dir, f"{ts_str}_{safe_title}.mp3")
+    raw_audio_path  = os.path.join(out_dir, f"{ts_str}_{safe_title}_raw.mp3")
     thumbnail_path  = os.path.join(out_dir, f"{ts_str}_{safe_title}_thumb.jpg")
+    work_dir        = os.path.join(out_dir, f"work_{ts_str}")
 
-    logger.info(f"Generating video for: {title} [{category}] (Shorts={is_shorts})")
+    logger.info(f"Generating Pro Short: {title} [{category}] (Lang={lang}, Voice={selected_voice})")
 
-    # Step 1: Generate frames with Intro Hook Slide + Kinetic Captions
+    # Step 1: Synthesize voiceover and extract millisecond word boundaries
     try:
-        frames = generate_frame_sequence(
-            script_lines, category, duration_per_line=4.0,
-            output_dir=out_dir, is_shorts=is_shorts, title=title
+        speech_path, word_timings = generate_speech(script, voice=selected_voice, rate=rate, output_path=raw_audio_path)
+    except Exception as e:
+        logger.error(f"Audio synthesis failed: {e}")
+        return None
+
+    # Step 2: Assemble Pro Short with continuous camera motion, ambient BGM, and kinetic subtitles
+    try:
+        render_pro_short(
+            title=title,
+            category=category,
+            script_lines=script_lines,
+            speech_path=speech_path,
+            word_timings=word_timings,
+            output_video_path=output_path,
+            work_dir=work_dir,
+            lang=lang
         )
     except Exception as e:
-        logger.error(f"Frame generation failed: {e}")
+        logger.error(f"Pro video assembly failed: {e}")
         return None
 
-    # QA Gate 2 & Self-Heal: Frames Inspection
-    exp_w = 1080 if is_shorts else 1280
-    exp_h = 1920 if is_shorts else 720
-    frames_ok = True
-    for idx, f_path in enumerate(frames):
-        f_ok, f_msg = validate_frame(f_path, exp_w, exp_h)
-        if not f_ok:
-            logger.warning(f"Frame {idx} defect ({f_msg}). Self-healing with regenerated visuals...")
-            frames_ok = False
-            break
-    if not frames_ok:
-        frames = generate_frame_sequence(
-            script_lines, category, duration_per_line=4.0,
-            output_dir=out_dir, is_shorts=is_shorts, title=title
-        )
-    logger.info(f"✓ [QA PASSED] All {len(frames)} frames verified (Intro Hook + Kinetic slides).")
+    # Step 3: Run the 6-Gate QA Validation Suite
+    qa_ok, qa_msg = validate_all_gates(
+        video_path=output_path,
+        audio_path=speech_path,
+        word_timings=word_timings,
+        title=title,
+        category=category,
+        recent_titles=recent_titles,
+        is_shorts=is_shorts
+    )
+    if not qa_ok:
+        logger.error(f"[QA REJECTED] Video failed QA suite: {qa_msg}")
+        return None
 
-    # Step 2: Generate voiceover
+    # Step 4: Generate cinematic thumbnail
     try:
-        run_audio_sync(script, voice=voice, rate=rate, output_path=audio_path)
-    except Exception as e:
-        logger.error(f"Audio generation failed: {e}")
-        return None
-
-    # QA Gate 3 & Self-Heal: Audio Stream Inspection
-    a_ok, a_msg, dur = validate_audio(audio_path, ffprobe_bin=FFPROBE)
-    if not a_ok:
-        logger.warning(f"Audio defect ({a_msg}). Self-healing with rate adjustment...")
-        rate = "+20%" if dur > 58.0 else "-10%"
-        run_audio_sync(script, voice=voice, rate=rate, output_path=audio_path)
-        a_ok, a_msg, dur = validate_audio(audio_path, ffprobe_bin=FFPROBE)
-        if not a_ok:
-            logger.error(f"[QA REJECTED] Audio unrecoverable: {a_msg}")
-            return None
-    logger.info(f"✓ [QA PASSED] Audio verified ({dur:.1f}s).")
-
-    # Step 3: Assemble video
-    try:
-        assemble_video(frames, audio_path, output_path)
-    except Exception as e:
-        logger.error(f"Video assembly failed: {e}")
-        return None
-
-    # QA Gate 4: Final Video Render Inspection
-    v_ok, v_msg = validate_video_file(output_path, ffprobe_bin=FFPROBE, is_shorts=is_shorts)
-    if not v_ok:
-        logger.error(f"[QA REJECTED] Final video verification failed: {v_msg}")
-        return None
-    logger.info(f"✓ [QA PASSED] Final video: {v_msg}")
-
-    # Step 4: Create high-converting cinematic thumbnail
-    try:
-        from engine import generate_cinematic_thumbnail
-        first_frame = frames[0] if frames else None
         generate_cinematic_thumbnail(
             title=title,
             category=category,
             lang=lang,
-            base_bg=first_frame,
+            base_bg=None,
             output_path=thumbnail_path,
             is_shorts=is_shorts,
         )
     except Exception as e:
-        logger.warning(f"Thumbnail creation fallback: {e}")
+        logger.warning(f"Thumbnail generation fallback: {e}")
         thumbnail_path = None
 
-    # QA Gate 5: Thumbnail Inspection
-    if thumbnail_path:
-        t_ok, t_msg = validate_thumbnail(thumbnail_path, is_shorts=is_shorts)
-        if not t_ok:
-            logger.warning(f"[QA WARNING] Thumbnail check failed ({t_msg}). Proceeding without custom thumbnail.")
-            thumbnail_path = None
-        else:
-            logger.info(f"✓ [QA PASSED] Thumbnail: {t_msg}")
-
-    # Step 5: Upload
+    # Step 5: Upload and Post Automated Affiliate Pinned Comment
     video_id = None
     if not dry_run:
         try:
             video_id = upload_video(output_path, title, description, tags)
-            if video_id and video_id != "QUOTA_EXCEEDED" and thumbnail_path:
-                set_thumbnail(video_id, thumbnail_path)
-            
-            # Send immediate notification on successful upload
             if video_id and video_id != "QUOTA_EXCEEDED":
+                if thumbnail_path:
+                    set_thumbnail(video_id, thumbnail_path)
+                
+                # Post automated affiliate pinned comment
+                try:
+                    from upload import post_comment
+                    comment_text = get_pinned_comment(category)
+                    post_comment(video_id, comment_text)
+                except Exception as ce:
+                    logger.info(f"Comment post skipped: {ce}")
+
+                # Send notification
                 try:
                     from notify import notify_upload_success
                     notify_upload_success(

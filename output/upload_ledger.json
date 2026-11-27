@@ -196,5 +196,14 @@
     "video_id": "syped2iYbZ8",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261127_173328_Book_Summary_The_Alchemist_by_Paulo_Coelho_Shorts_hi.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "tech",
+    "lang": "en",
+    "title": "Humanoid Robots Enter Car Manufacturing Lines #Shorts",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_004258_Humanoid_Robots_Enter_Car_Manufacturing_Lines_Shorts.mp4",
+    "dry_run": true
   }
 ]

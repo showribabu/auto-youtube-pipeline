@@ -195,3 +195,26 @@ def set_thumbnail(video_id: str, thumbnail_path: str) -> bool:
     except Exception as e:
         logger.info(f"Custom thumbnail skipped (channel uses auto-generated thumbnail): {e}")
         return False
+
+
+def post_comment(video_id: str, comment_text: str) -> bool:
+    """Post an automated high-converting comment on the uploaded video."""
+    try:
+        creds = _load_creds()
+        service = build("youtube", "v3", credentials=creds)
+        body = {
+            "snippet": {
+                "videoId": video_id,
+                "topLevelComment": {
+                    "snippet": {
+                        "textOriginal": comment_text
+                    }
+                }
+            }
+        }
+        service.commentThreads().insert(part="snippet", body=body).execute()
+        logger.info(f"✓ Posted automated comment on video {video_id}")
+        return True
+    except Exception as e:
+        logger.info(f"Comment posting skipped (requires comment permission scope): {e}")
+        return False
