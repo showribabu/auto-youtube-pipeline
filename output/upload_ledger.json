@@ -205,5 +205,14 @@
     "video_id": null,
     "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_004258_Humanoid_Robots_Enter_Car_Manufacturing_Lines_Shorts.mp4",
     "dry_run": true
+  },
+  {
+    "date": "2026-11-28",
+    "category": "tech",
+    "lang": "en",
+    "title": "Humanoid Robots Enter Car Manufacturing Lines #Shorts",
+    "video_id": "-Hy4DUHpw3E",
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_004411_Humanoid_Robots_Enter_Car_Manufacturing_Lines_Shorts.mp4",
+    "dry_run": false
   }
 ]
