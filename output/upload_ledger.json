@@ -142,5 +142,32 @@
     "video_id": "0S5Q5d6yPB0",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/books_hi/20261126_235615_Shorts_hi.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "tech",
+    "lang": "en",
+    "title": "Neural Interface Chips Allow Direct Thought Control #Shorts",
+    "video_id": "1nUfQ8Jl-J8",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/tech_en/20261127_104801_Neural_Interface_Chips_Allow_Direct_Thought_Control_Shorts.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "news",
+    "lang": "te",
+    "title": "Daily News Roundup \u2014 Nov 27, 2026 #Shorts",
+    "video_id": null,
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/news_te/20261127_104827_Daily_News_Roundup_Nov_27_2026_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "crypto",
+    "lang": "en",
+    "title": "Daily Crypto Update \u2014 Nov 27, 2026 #Shorts",
+    "video_id": "Ahp5dOLldrc",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/crypto_en/20261127_104852_Daily_Crypto_Update_Nov_27_2026_Shorts.mp4",
+    "dry_run": false
   }
 ]
