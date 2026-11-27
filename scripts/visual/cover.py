@@ -84,14 +84,18 @@ def generate_frame_0_hook_card(
     draw.text((px + 25, py + 8), pill_text, fill=(255, 221, 0), font=font_pill)
 
     # 2. Main Shocking Hook Headline (Centered at y = height * 0.40)
-    # Extract short 3-5 word hook from title
-    words = title.strip().split()
-    if len(words) > 6:
-        hook_lines = [" ".join(words[:4]), " ".join(words[4:8])]
+    # Clean hashtags from hook card
+    import re
+    clean_hook = re.sub(r"#\S+", "", title).strip()
+    words = clean_hook.split()
+    if len(words) > 8:
+        hook_lines = [" ".join(words[:4]), " ".join(words[4:8]), " ".join(words[8:12])]
+    elif len(words) > 4:
+        hook_lines = [" ".join(words[:4]), " ".join(words[4:])]
     else:
-        hook_lines = [title.strip()]
+        hook_lines = [clean_hook]
 
-    font_hook = _get_font(68)
+    font_hook = _get_font(64)
     start_y = int(height * 0.38)
 
     for idx, line in enumerate(hook_lines):

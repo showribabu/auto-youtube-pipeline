@@ -93,7 +93,7 @@ def concatenate_scenes_with_crossfade(
     fc_parts = []
     prev = "[0:v]"
     for idx in range(1, len(scene_clips)):
-        offset = idx * clip_dur - (crossfade_dur * 0.5)
+        offset = idx * (clip_dur - crossfade_dur)
         nxt = f"[v{idx}]" if idx < len(scene_clips) - 1 else "[vout]"
         fc_parts.append(f"{prev}[{idx}:v]xfade=transition=fade:duration={crossfade_dur:.2f}:offset={offset:.2f}{nxt}")
         prev = nxt

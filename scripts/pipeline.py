@@ -142,6 +142,8 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
     tags         = list(content.get("tags", []))
     description  = content.get("description", "")
     rate         = content.get("rate", "+0%")
+    visual_urls  = content.get("visual_urls")
+    hook_text    = content.get("hook")
 
     if is_shorts:
         tags.extend(["shorts", "viral", "trending", "youtubeshorts", "daily", "foryou"])
@@ -180,7 +182,9 @@ def run_category(category: str, dry_run: bool = False, lang: str = "en") -> dict
             word_timings=word_timings,
             output_video_path=output_path,
             work_dir=work_dir,
-            lang=lang
+            lang=lang,
+            visual_urls=visual_urls,
+            hook_text=hook_text
         )
     except Exception as e:
         logger.error(f"Pro video assembly failed: {e}")

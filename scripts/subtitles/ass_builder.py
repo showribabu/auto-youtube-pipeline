@@ -66,20 +66,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         chunk = word_timings[i : i + words_per_cue]
         chunk_start = chunk[0]["start"]
         chunk_end = chunk[-1]["end"]
+        # Look ahead to next chunk to eliminate awkward blank gaps between sentences
+        next_start = word_timings[i + words_per_cue]["start"] if (i + words_per_cue < n) else (chunk_end + 0.4)
 
         # For each word in the chunk, create a dialogue line where that word is highlighted
         for active_idx, target_word in enumerate(chunk):
             w_start = target_word["start"]
-            # Word ends at its end time, or at next word's start
-            w_end = target_word["end"]
             if active_idx < len(chunk) - 1:
-                w_end = min(w_end, chunk[active_idx + 1]["start"])
+                w_end = min(target_word["end"], chunk[active_idx + 1]["start"])
             else:
-                w_end = chunk_end
+                # Hold the final word of the cue smoothly across pauses so the screen is never blank
+                w_end = max(chunk_end, min(chunk_end + 0.65, next_start))
 
             # Ensure valid duration
             if w_end <= w_start:
-                w_end = w_start + 0.15
+                w_end = w_start + 0.18
 
             t_start_str = _format_ass_time(w_start)
             t_end_str = _format_ass_time(w_end)

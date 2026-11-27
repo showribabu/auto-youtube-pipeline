@@ -23,12 +23,25 @@ from engine import _fetch_background_image
 logger = get_logger("compositor")
 
 
-def _get_category_photo(category: str, slide_idx: int, work_dir: str) -> str:
-    """Fetch and cache high-res category image to file."""
+def _get_category_photo(category: str, slide_idx: int, work_dir: str, visual_urls: list[str] | None = None) -> str:
+    """Fetch and cache high-res category or topic-curated image to file."""
     cache_path = os.path.join(work_dir, f"bg_photo_{slide_idx:02d}.jpg")
     if os.path.exists(cache_path) and os.path.getsize(cache_path) > 10_000:
         return cache_path
-    
+
+    # Prioritize topic-specific curated URLs (100% relevant, zero motherboard mismatch)
+    if visual_urls and len(visual_urls) > 0:
+        target_url = visual_urls[slide_idx % len(visual_urls)]
+        try:
+            import urllib.request
+            req = urllib.request.Request(target_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=12) as r, open(cache_path, "wb") as f:
+                f.write(r.read())
+            if os.path.exists(cache_path) and os.path.getsize(cache_path) > 10_000:
+                return cache_path
+        except Exception as e:
+            logger.warning(f"Curated photo download failed for {target_url}: {e}")
+
     img = _fetch_background_image(category, 1080, 1920, slide_idx)
     if img:
         img.save(cache_path, "JPEG", quality=92)
@@ -49,7 +62,9 @@ def render_pro_short(
     word_timings: list[dict],
     output_video_path: str,
     work_dir: str,
-    lang: str = "en"
+    lang: str = "en",
+    visual_urls: list[str] | None = None,
+    hook_text: str | None = None
 ) -> str:
     """
     Assemble complete high-retention Short video.
@@ -81,44 +96,30 @@ def render_pro_short(
     ass_path = os.path.join(work_dir, "kinetic_subtitles.ass")
     build_kinetic_ass(word_timings, ass_path, font_name="Nirmala UI", font_size=56, words_per_cue=2)
 
-    # 4. Generate visual scene clips (2.5s to 3.5s per scene)
-    num_scenes = max(3, int(total_dur / 3.0))
-    scene_dur = round(total_dur / num_scenes, 2)
+    # 4. Generate visual scene clips (2.5s to 3.5s per scene, calibrated with crossfades)
+    crossfade_dur = 0.35
+    num_scenes = max(4, int(total_dur / 3.0))
+    scene_dur = round((total_dur + (num_scenes - 1) * crossfade_dur) / num_scenes, 2)
     scene_clips = []
 
-    # Scene 0: Frame 0 Hook Card (First 2.5s)
-    base_bg_0 = _get_category_photo(category, 0, work_dir)
+    # Scene 0: Frame 0 Hook Card (Curiosity question billboard)
+    base_bg_0 = _get_category_photo(category, 0, work_dir, visual_urls=visual_urls)
     hook_card_img = os.path.join(work_dir, "frame_0_hook.png")
-    generate_frame_0_hook_card(title, category, base_bg_0, hook_card_img)
+    generate_frame_0_hook_card(hook_text or title, category, base_bg_0, hook_card_img)
     hook_clip_path = os.path.join(work_dir, "scene_000_hook.mp4")
     create_ken_burns_clip(hook_card_img, scene_dur, hook_clip_path, zoom_in=True)
     scene_clips.append(hook_clip_path)
 
-    # Subsequent Scenes: Moving visual clips
+    # Subsequent Scenes: High-action topic visual clips
     for idx in range(1, num_scenes):
         scene_clip_path = os.path.join(work_dir, f"scene_{idx:03d}.mp4")
-        # Try real B-roll video clip if available
-        broll_mp4 = fetch_vertical_video_broll(category, work_dir, idx)
-        if broll_mp4 and os.path.exists(broll_mp4) and os.path.getsize(broll_mp4) > 100_000:
-            # Re-scale and trim to scene_dur
-            cmd_trim = [
-                FFMPEG, "-y", "-i", broll_mp4,
-                "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                "-pix_fmt", "yuv420p", "-t", f"{scene_dur:.2f}",
-                scene_clip_path
-            ]
-            subprocess.run(cmd_trim, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        else:
-            # Ken Burns camera push-in on high-res curated photo
-            photo_path = _get_category_photo(category, idx, work_dir)
-            create_ken_burns_clip(photo_path, scene_dur, scene_clip_path, zoom_in=(idx % 2 == 1))
-
+        photo_path = _get_category_photo(category, idx, work_dir, visual_urls=visual_urls)
+        create_ken_burns_clip(photo_path, scene_dur, scene_clip_path, zoom_in=(idx % 2 == 1))
         scene_clips.append(scene_clip_path)
 
     # 5. Stitch visual scenes with crossfades
     motion_video_path = os.path.join(work_dir, "motion_track.mp4")
-    concatenate_scenes_with_crossfade(scene_clips, motion_video_path, crossfade_dur=0.35, clip_dur=scene_dur)
+    concatenate_scenes_with_crossfade(scene_clips, motion_video_path, crossfade_dur=crossfade_dur, clip_dur=scene_dur)
 
     # 6. Final Compositor: Burn kinetic .ass subtitles directly onto motion track with mixed audio
     # Fix Windows backslash path escaping for FFmpeg subtitle filter
