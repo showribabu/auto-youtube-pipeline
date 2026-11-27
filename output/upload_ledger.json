@@ -232,5 +232,23 @@
     "video_id": "cuxCSEAE81s",
     "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_011745_Did_You_Know_Robots_Build_Entire_Cars_Now_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "history",
+    "lang": "te",
+    "title": "Did You Know A Moldy Dish Saved 200 Million Lives? #Shorts",
+    "video_id": "9DEK0UMb7yQ",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/history_te/20261127_211035_Did_You_Know_A_Moldy_Dish_Saved_200_Million_Lives_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-27",
+    "category": "kids",
+    "lang": "en",
+    "title": "Leo the Lion Who Lost His Roar #Shorts",
+    "video_id": "gWMKwjhBsC4",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261127_211145_Leo_the_Lion_Who_Lost_His_Roar_Shorts.mp4",
+    "dry_run": false
   }
 ]
