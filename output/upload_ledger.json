@@ -214,5 +214,23 @@
     "video_id": "-Hy4DUHpw3E",
     "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_004411_Humanoid_Robots_Enter_Car_Manufacturing_Lines_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "tech",
+    "lang": "en",
+    "title": "Did You Know Robots Build Entire Cars Now? #Shorts",
+    "video_id": null,
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_011430_Did_You_Know_Robots_Build_Entire_Cars_Now_Shorts.mp4",
+    "dry_run": true
+  },
+  {
+    "date": "2026-11-28",
+    "category": "tech",
+    "lang": "en",
+    "title": "Did You Know Robots Build Entire Cars Now? #Shorts",
+    "video_id": "cuxCSEAE81s",
+    "video_path": "D:\\PROJECT\\Coding\\auto-youtube-pipeline\\output\\tech_en\\20261128_011745_Did_You_Know_Robots_Build_Entire_Cars_Now_Shorts.mp4",
+    "dry_run": false
   }
 ]
