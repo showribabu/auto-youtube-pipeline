@@ -277,5 +277,14 @@
     "video_id": "rVBhHsyB5TY",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/crypto_en/20261128_102040_Daily_Crypto_Update_Nov_28_2026_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "kids",
+    "lang": "en",
+    "title": "The Friendly Dragon #Shorts",
+    "video_id": "js9lBHow9_0",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261128_161742_The_Friendly_Dragon_Shorts.mp4",
+    "dry_run": false
   }
 ]
