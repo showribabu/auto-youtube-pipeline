@@ -250,5 +250,32 @@
     "video_id": "gWMKwjhBsC4",
     "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/kids_en/20261127_211145_Leo_the_Lion_Who_Lost_His_Roar_Shorts.mp4",
     "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "tech",
+    "lang": "en",
+    "title": "Did You Know Brain Chips Allow Direct Thought Control? #Shorts",
+    "video_id": "7dUIjv_QDjU",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/tech_en/20261128_101824_Did_You_Know_Brain_Chips_Allow_Direct_Thought_Control_Shorts.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "news",
+    "lang": "te",
+    "title": "Daily News Roundup \u2014 Nov 28, 2026 #Shorts",
+    "video_id": null,
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/news_te/20261128_101923_Daily_News_Roundup_Nov_28_2026_Shorts_te.mp4",
+    "dry_run": false
+  },
+  {
+    "date": "2026-11-28",
+    "category": "crypto",
+    "lang": "en",
+    "title": "Daily Crypto Update \u2014 Nov 28, 2026 #Shorts",
+    "video_id": "rVBhHsyB5TY",
+    "video_path": "/home/runner/work/auto-youtube-pipeline/auto-youtube-pipeline/output/crypto_en/20261128_102040_Daily_Crypto_Update_Nov_28_2026_Shorts.mp4",
+    "dry_run": false
   }
 ]
